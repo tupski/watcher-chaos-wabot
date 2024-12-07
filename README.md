@@ -31,7 +31,7 @@ Currently, the following feature is still under development:
 | **`!tagall`** | A command that intends to tag all group members (currently unavailable). I am still working on this command. |
 
 ### Anti Spam Link
-> `Currently not working`
+> **`Currently not working`**
 * This feature is designed to block or prevent the spread of harmful, spammy, or unwanted links in WhatsApp groups. With this feature, users will be protected from suspicious and potentially harmful links.
 ---
 
