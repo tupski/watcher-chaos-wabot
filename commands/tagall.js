@@ -1,16 +1,34 @@
 module.exports = async (client, message) => {
-    if (!message.isGroupMsg) {
-        message.reply('Command ini hanya dapat digunakan di grup.');
+    const validGroupIds = [
+        '120363167287303832@g.us',
+        '120363329911125895@g.us',
+        '120363194079703816@g.us',
+        '120363364063161357@g.us'
+    ];
+
+    // Pastikan pesan berasal dari grup valid
+    if (!message.from.endsWith('@g.us') || !validGroupIds.includes(message.from)) {
+        console.log('Pesan bukan dari grup yang valid.');
         return;
     }
 
-    const chat = await message.getChat();
-    let mentions = [];
+    // Tangani perintah !tagall
+    try {
+        const chat = await message.getChat();
+        if (!chat.isGroup) {
+            console.log('Perintah hanya untuk grup.');
+            return;
+        }
 
-    chat.participants.forEach(participant => {
-        mentions.push(participant.id._serialized);
-    });
+        const mentions = [];
+        for (let participant of chat.participants) {
+            const contact = await client.getContactById(participant.id._serialized);
+            mentions.push(contact);
+        }
 
-    const text = `*[TAG ALL]*\n${mentions.map(id => `@${id.split('@')[0]}`).join('\n')}`;
-    await chat.sendMessage(text, { mentions });
+        await chat.sendMessage('Hello, semuanya!', { mentions });
+        console.log('Pesan tagall berhasil dikirim.');
+    } catch (error) {
+        console.error('Terjadi kesalahan saat menjalankan perintah !tagall:', error);
+    }
 };
