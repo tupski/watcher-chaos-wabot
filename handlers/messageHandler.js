@@ -2,17 +2,17 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async (client, message) => {
-    // Ignore messages that do not start with "!"
+    // Abaikan pesan yang tidak diawali dengan "!"
     if (!message.body.startsWith('!')) return;
 
-    // Get the command name (e.g. "!tagall" becomes "tagall")
+    // Ambil nama perintah (misalnya "!tagall" menjadi "tagall")
     const commandName = message.body.split(' ')[0].substring(1).toLowerCase();
     const commandPath = path.join(__dirname, '..', 'commands', `${commandName}.js`);
 
-    // Check if command file exists
+    // Periksa apakah file perintah ada
     if (fs.existsSync(commandPath)) {
         try {
-            // Load the command file and run it
+            // Muat file perintah dan jalankan
             const command = require(commandPath);
             await command(client, message);
         } catch (error) {
@@ -20,7 +20,7 @@ module.exports = async (client, message) => {
             message.reply(`Maaf, terjadi kesalahan saat menjalankan perintah "${commandName}".`);
         }
     } else {
-        // Response if command not found
+        // Tanggapan jika perintah tidak ditemukan
         message.reply(`Perintah "${commandName}" tidak ditemukan.`);
     }
 };
