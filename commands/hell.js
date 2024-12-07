@@ -17,34 +17,26 @@ module.exports = async (client, message) => {
             const content = hellEvent.content;
             const discordTimestamp = moment(hellEvent.timestamp).utcOffset(process.env.TIMEZONE_OFFSET);
 
-            // Regex untuk menangkap data dari pesan Discord
             const regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)m left\s*\|\s*([\d]+K)/;
             const matches = content.match(regex);
 
             if (matches) {
-                const eventName = matches[1].trim(); // Chaos Dragon atau Watcher
-                const taskName = matches[2].trim(); // Artifact
-                const minutesLeft = parseInt(matches[3]); // ambil sisa menit
+                const eventName = matches[1].trim();
+                const taskName = matches[2].trim();
+                const minutesLeft = parseInt(matches[3]);
                 const points = matches[4].trim();
 
                 const now = moment();
                 const eventEndTime = discordTimestamp.clone().add(minutesLeft, 'minutes');
 
-                if (now.isAfter(eventEndTime)) {
-                    // Jika event sudah berakhir, tampilkan not available message
-                    message.reply(`
-Hell Watcher/Chaos Dragon *not available right now.*
-Last event at:
-*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*
+                let msgText = '';
 
-Event: *${eventName}*
-Task: *${taskName}*
-                    `);
+                if (now.isAfter(eventEndTime)) {
+                    msgText = `Hell Watcher/Chaos Dragon *not available right now.*\nLast event at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\nEvent: *${eventName}*\nTask: *${taskName}*`;
                 } else {
                     let timeLeftFormatted = '';
 
                     if (now.minute() >= 55 && now.minute() <= 59) {
-                        // Jika sekarang di antara menit 55 dan 59
                         const remainingMinutes = 59 - now.minute() + 1;
                         timeLeftFormatted = `Starts in ${remainingMinutes} min`;
                     } else if (now.isBefore(eventEndTime)) {
@@ -52,26 +44,38 @@ Task: *${taskName}*
                         timeLeftFormatted = `${timeDiffMinutes}m left`;
                     }
 
-                    message.reply(`
-Hell | *${eventName}*
-
-Task(s): *${taskName}*
-Time left: *${timeLeftFormatted}*
-Phase 3 points: *${points}*
-
-Message received at:
-*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*
-                    `);
+                    msgText = `Hell | *${eventName}*\nTask(s): *${taskName}*\nTime left: *${timeLeftFormatted}*\nPhase 3 points: *${points}*\nMessage received at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
                 }
+
+                // Send this message to the WhatsApp group
+                const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
+                const chat = await client.getChatById(chatId);
+                if (chat) {
+                    await chat.sendMessage(msgText);
+                }
+
+                // Reply back in the WhatsApp interface
+                message.reply(msgText);
             } else {
                 message.reply('Failed to parse Hell event details from Discord.');
             }
         } else {
             const lastMessageTime = moment(messages[0]?.timestamp).utcOffset(process.env.TIMEZONE_OFFSET).format('DD/MM/YYYY HH:mm:ss (GMT+7)');
-            message.reply(`No Hell Watcher/Chaos Dragon found. Last event:\n${lastMessageTime}`);
+            const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
+            const chat = await client.getChatById(chatId);
+            if (chat) {
+                await chat.sendMessage(`No Hell Watcher/Chaos Dragon found. Last event at ${lastMessageTime}`);
+            }
+            message.reply(`No Hell Watcher/Chaos Dragon found. Last event at:\n${lastMessageTime}`);
         }
-    } catch (err) {
-        console.error(err);
+    } catch (error) {
+        console.error(error);
         message.reply('Failed to fetch Hell event from Discord.');
+
+        const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
+        const chat = await client.getChatById(chatId);
+        if (chat) {
+            await chat.sendMessage('Failed to fetch Hell event from Discord.');
+        }
     }
 };

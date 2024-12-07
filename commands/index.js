@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Membaca semua file di direktori commands dan memuatnya
+// Reads all files in the commands directory and loads them
 const commands = {};
 fs.readdirSync(__dirname).forEach(file => {
     if (file.endsWith('.js')) {

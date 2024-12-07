@@ -1,4 +1,4 @@
-require('dotenv').config(); // Load .env file
+require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const fs = require('fs');
 const path = require('path');
@@ -7,10 +7,10 @@ const path = require('path');
 const messageHandler = require('./handlers/messageHandler');
 const readyHandler = require('./handlers/readyHandler');
 
-// Inisialisasi WhatsApp Client
+// Initialize WhatsApp Client
 const client = new Client({
     authStrategy: new LocalAuth({
-        clientId: process.env.WHATSAPP_CLIENT_ID, // Client ID dari file .env
+        clientId: process.env.WHATSAPP_CLIENT_ID,
     }),
     puppeteer: { headless: true },
 });

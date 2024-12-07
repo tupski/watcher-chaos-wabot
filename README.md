@@ -1,4 +1,5 @@
-# WhatsApp Bot - Chaos Watcher
+# Lords Mobile Hell Event - WhatsApp Notification
+## `Chaos & Watcher` Notification
 
 ## 🚀 Introduction
 Welcome to the **Chaos Watcher WhatsApp Bot**!  

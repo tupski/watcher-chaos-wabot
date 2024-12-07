@@ -6,13 +6,13 @@ module.exports = async (client, message) => {
         '120363364063161357@g.us'
     ];
 
-    // Pastikan pesan berasal dari grup valid
+    // Make sure the message comes from a valid group
     if (!message.from.endsWith('@g.us') || !validGroupIds.includes(message.from)) {
         console.log('Pesan bukan dari grup yang valid.');
         return;
     }
 
-    // Tangani perintah !tagall
+    // Handle the !tagall command
     try {
         const chat = await message.getChat();
         if (!chat.isGroup) {
