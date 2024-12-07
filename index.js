@@ -1,50 +1,37 @@
 require('dotenv').config();
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
+const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits } = require('discord.js');
 
-// Load Handlers
+// Handlers
 const messageHandler = require('./handlers/messageHandler');
 const readyHandler = require('./handlers/readyHandler');
 
-const discordClient = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, // Needed to read message content
-    ],
-});
-
-// Log in to Discord
-discordClient.login(process.env.DISCORD_TOKEN);
-
-// Event Listener: When a new message is created
-discordClient.on('messageCreate', async (message) => {
-    if (message.channel.id === process.env.DISCORD_CHANNEL_ID) {
-        // Process the new message
-        const whatsappGroupId = process.env.WHATSAPP_GROUP_ID;
-        const chat = await whatsappClient.getChatById(`${whatsappGroupId}@g.us`);
-
-        if (chat) {
-            await chat.sendMessage(`New message from Discord: ${message.content}`);
-        }
-    }
-});
-
 // Initialize WhatsApp Client
-const client = new Client({
+const whatsappClient = new WhatsAppClient({
     authStrategy: new LocalAuth({
         clientId: process.env.WHATSAPP_CLIENT_ID,
     }),
     puppeteer: { headless: true },
 });
 
-// Event: Client Ready
-client.on('ready', () => readyHandler(client));
+// Initialize Discord Client
+const discordClient = new DiscordClient({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+});
 
-// Event: Pesan Masuk
-client.on('message', message => messageHandler(client, message));
+// Event: WhatsApp Client Ready
+whatsappClient.on('ready', () => readyHandler(whatsappClient));
 
-// Jalankan Client
-client.initialize();
+// Event: Discord Client Ready
+discordClient.on('ready', () => {
+    console.log(`Discord bot logged in as ${discordClient.user.tag}`);
+});
+
+// Event: WhatsApp Messages
+whatsappClient.on('message', (message) => messageHandler(whatsappClient, message));
+
+// Start Clients
+whatsappClient.initialize();
+discordClient.login(process.env.DISCORD_TOKEN);
