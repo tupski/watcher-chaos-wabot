@@ -13,26 +13,23 @@ Special thanks to [HephBot](https://hephbot.com) for providing inspiration and t
 
 ### ✅ Available Commands
 The bot supports the following commands:
-- **`!hell`**: Displays the ongoing Hell Event data. If no events are currently active, it will show **"Not available."** and fetch last hell event.
-- **`!yell`**: Allows users to send a custom fun message to groups or specific channels.  
 
-    **Example:**  
-    ```plaintext
-    !yell Hello World!
-    ```  
+| Command | Description | Example | Output Example|
+|-----------|-----------------------------------------------------------------------------|----------------------------------|----------------------------|
+| **`!hell`** | Displays the ongoing Hell Event data. If no events are currently active, it will show **"Not available."** and fetch last hell event. | `!hell` | N/A                        |
+| **`!yell`** | Allows users to send a custom fun message to groups or specific channels. | `!yell Hello World!` | Hello World!
+| **`!uptime`** | Displays how long the bot has been running. | `!uptime` | `Uptime: 0h 9m 58s` |
+| **`!ping`**   | A quick way to check if the bot is active and online. | `!ping` | N/A |
 
-    **Output:**  
-    ```plaintext
-    [YELL]
-
-    Hello World!
-    ```
-- **`!uptime`**: Displays how long the bot has been running.  
-- **`!ping`**: A quick way to check if the bot is active and online.
+---
 
 ### ❌ Commands in Progress
 Currently, the following feature is still under development:
-- **`!tagall`**: A command that intends to tag all group members (currently unavailable). I still working in this command.
+
+| Command   | Description                                    |
+|-----------|------------------------------------------------|
+| **`!tagall`** | A command that intends to tag all group members (currently unavailable). I am still working on this command. |
+
 
 ---
 
