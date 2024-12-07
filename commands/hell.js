@@ -47,35 +47,44 @@ module.exports = async (client, message) => {
                     msgText = `Hell | *${eventName}*\nTask(s): *${taskName}*\nTime left: *${timeLeftFormatted}*\nPhase 3 points: *${points}*\nMessage received at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
                 }
 
-                // Send this message to the WhatsApp group
                 const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
-                const chat = await client.getChatById(chatId);
-                if (chat) {
-                    await chat.sendMessage(msgText);
-                }
 
-                // Reply back in the WhatsApp interface
-                message.reply(msgText);
+                console.log('Attempting to fetch chatId:', chatId);
+
+                try {
+                    const chats = await client.getChats();
+                    const chat = chats.find(c => c.id._serialized === chatId);
+
+                    if (chat) {
+                        console.log('Found chat:', chat);
+                        await chat.sendMessage(msgText);
+                    } else {
+                        console.error('Group chat not found');
+                    }
+                    message.reply(msgText);
+                } catch (error) {
+                    console.error('Failed to fetch group chat:', error);
+                }
             } else {
                 message.reply('Failed to parse Hell event details from Discord.');
             }
         } else {
             const lastMessageTime = moment(messages[0]?.timestamp).utcOffset(process.env.TIMEZONE_OFFSET).format('DD/MM/YYYY HH:mm:ss (GMT+7)');
             const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
-            const chat = await client.getChatById(chatId);
-            if (chat) {
-                await chat.sendMessage(`No Hell Watcher/Chaos Dragon found. Last event at ${lastMessageTime}`);
+            try {
+                const chats = await client.getChats();
+                const chat = chats.find(c => c.id._serialized === chatId);
+                if (chat) {
+                    await chat.sendMessage(`No Hell Watcher/Chaos Dragon found. Last event at ${lastMessageTime}`);
+                }
+            } catch (error) {
+                console.error('Failed to send fallback message to group');
             }
+
             message.reply(`No Hell Watcher/Chaos Dragon found. Last event at:\n${lastMessageTime}`);
         }
     } catch (error) {
         console.error(error);
         message.reply('Failed to fetch Hell event from Discord.');
-
-        const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
-        const chat = await client.getChatById(chatId);
-        if (chat) {
-            await chat.sendMessage('Failed to fetch Hell event from Discord.');
-        }
     }
 };
