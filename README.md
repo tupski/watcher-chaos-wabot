@@ -73,6 +73,14 @@ Next, install all required dependencies by running:
   - Look at the group info or settings to find the group ID.
   - Alternatively, use the WhatsApp Web interface with your bot to inspect the group ID.
 - Copy these group IDs and add them to your `.env` file in the `WHATSAPP_GROUP_IDS`.
+> WhatsApp Group ID Example:
+>
+> **`12036316XXX303832@g.us`**
+
+> **_you can also use multiple whatsapp group id separated by comma_**
+>
+> **in .env**
+> `WHATSAPP_GROUP_IDS=12036316XXX303832@g.us,12036316XXX303832@g.us,12036316XXX303832@g.us`
 
 ---
 
