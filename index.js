@@ -1,14 +1,12 @@
 require('dotenv').config();
 const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const qrcode = require('qrcode-terminal');
 
-// Handlers
-const messageHandler = require('./handlers/messageHandler');
-const readyHandler = require('./handlers/readyHandler');
+// Import Commands
+const hellEventHandler = require('./commands/hell');
 
-// Initialize WhatsApp Client
+// Inisialisasi WhatsApp dan Discord Client
 const whatsappClient = new WhatsAppClient({
     authStrategy: new LocalAuth({
         clientId: process.env.WHATSAPP_CLIENT_ID,
@@ -16,22 +14,51 @@ const whatsappClient = new WhatsAppClient({
     puppeteer: { headless: true },
 });
 
-// Initialize Discord Client
 const discordClient = new DiscordClient({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
-// Event: WhatsApp Client Ready
-whatsappClient.on('ready', () => readyHandler(whatsappClient));
+// QR Code untuk WhatsApp
+whatsappClient.on('qr', (qr) => {
+    console.log('Scan QR Code untuk WhatsApp:');
+    qrcode.generate(qr, { small: true });
+});
 
-// Event: Discord Client Ready
+// Handle WhatsApp Ready
+whatsappClient.on('ready', () => {
+    console.log('WhatsApp client is ready');
+});
+
+// Debugging untuk Discord
 discordClient.on('ready', () => {
-    console.log(`Discord bot logged in as ${discordClient.user.tag}`);
+    console.log(`Discord logged in as: ${discordClient.user.tag}`);
 });
 
-// Event: WhatsApp Messages
-whatsappClient.on('message', (message) => messageHandler(whatsappClient, message));
+// Handle pesan dari Discord
+discordClient.on('messageCreate', async (message) => {
+    console.log('Pesan diterima dari Discord:', message.content);
+    
+    // Periksa apakah pesan berasal dari channel yang dimaksud
+    if (message.channelId === process.env.DISCORD_CHANNEL_ID) {
+        console.log('Memproses pesan karena channel ID cocok');
+        try {
+            await hellEventHandler(whatsappClient, message);
+        } catch (error) {
+            console.error('Error saat memproses pesan Discord:', error);
+        }
+    } else {
+        console.log('Pesan datang dari channel yang tidak cocok');
+    }
+});
 
-// Start Clients
+// Tangani error pada Discord login
+discordClient.login(process.env.DISCORD_TOKEN)
+    .then(() => {
+        console.log('Discord client logged in successfully');
+    })
+    .catch((error) => {
+        console.error('Failed to login to Discord client:', error);
+    });
+
+// Login ke WhatsApp
 whatsappClient.initialize();
-discordClient.login(process.env.DISCORD_TOKEN);

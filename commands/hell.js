@@ -1,90 +1,50 @@
 const moment = require('moment');
 const fetch = require('node-fetch');
 
-module.exports = async (client, message) => {
-    const discordChannelId = process.env.DISCORD_CHANNEL_ID;
-    const discordToken = process.env.DISCORD_TOKEN;
+module.exports = async (whatsappClient, discordMessage) => {
+    const whatsappGroupIds = process.env.WHATSAPP_GROUP_IDS.split(',');
 
     try {
-        const response = await fetch(`https://discord.com/api/v10/channels/${discordChannelId}/messages`, {
-            headers: { Authorization: `Bot ${discordToken}` },
-        });
+        const content = discordMessage.content; // Ambil pesan dari Discord
+        const regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
+        const matches = content.match(regex);
 
-        const messages = await response.json();
+        if (matches) {
+            const eventName = matches[1].trim();
+            const taskName = matches[2].trim();
+            const minutesLeft = parseInt(matches[3]);
+            const points = matches[4].trim();
+            const discordTimestamp = moment(discordMessage.createdAt).utcOffset(process.env.TIMEZONE_OFFSET);
 
-        const hellEvent = messages.find(msg => msg.content.includes('Hell'));
-        if (hellEvent) {
-            const content = hellEvent.content;
-            const discordTimestamp = moment(hellEvent.timestamp).utcOffset(process.env.TIMEZONE_OFFSET);
+            const now = moment();
+            const eventEndTime = discordTimestamp.clone().add(minutesLeft, 'minutes');
+            let msgText = '';
 
-            const regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)m left\s*\|\s*([\d]+K)/;
-            const matches = content.match(regex);
-
-            if (matches) {
-                const eventName = matches[1].trim();
-                const taskName = matches[2].trim();
-                const minutesLeft = parseInt(matches[3]);
-                const points = matches[4].trim();
-
-                const now = moment();
-                const eventEndTime = discordTimestamp.clone().add(minutesLeft, 'minutes');
-
-                let msgText = '';
-
-                if (now.isAfter(eventEndTime)) {
-                    msgText = `Hell Watcher/Chaos Dragon *not available right now.*\nLast event at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\nEvent: *${eventName}*\nTask: *${taskName}*`;
-                } else {
-                    let timeLeftFormatted = '';
-
-                    if (now.minute() >= 55 && now.minute() <= 59) {
-                        const remainingMinutes = 59 - now.minute() + 1;
-                        timeLeftFormatted = `Starts in ${remainingMinutes} min`;
-                    } else if (now.isBefore(eventEndTime)) {
-                        const timeDiffMinutes = Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes());
-                        timeLeftFormatted = `${timeDiffMinutes}m left`;
-                    }
-
-                    msgText = `Hell | *${eventName}*\nTask(s): *${taskName}*\nTime left: *${timeLeftFormatted}*\nPhase 3 points: *${points}*\nMessage received at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
-                }
-
-                const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
-
-                console.log('Attempting to fetch chatId:', chatId);
-
-                try {
-                    const chats = await client.getChats();
-                    const chat = chats.find(c => c.id._serialized === chatId);
-
-                    if (chat) {
-                        console.log('Found chat:', chat);
-                        await chat.sendMessage(msgText);
-                    } else {
-                        console.error('Group chat not found');
-                    }
-                    message.reply(msgText);
-                } catch (error) {
-                    console.error('Failed to fetch group chat:', error);
-                }
+            if (now.isAfter(eventEndTime)) {
+                msgText = `Hell Watcher/Chaos Dragon *not available right now.*\nLast event at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\nEvent: *${eventName}*\nTask: *${taskName}*`;
             } else {
-                message.reply('Failed to parse Hell event details from Discord.');
+                let timeLeftFormatted = `${Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes())}m left`;
+                msgText = `Hell | *${eventName}*\nTask(s): *${taskName}*\nTime left: *${timeLeftFormatted}*\nPhase 3 points: *${points}*\nMessage received at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+            }
+
+            for (const groupId of whatsappGroupIds) {
+                try {
+                    const chats = await whatsappClient.getChats();
+                    const chat = chats.find(c => c.id._serialized === groupId.trim());
+                    if (chat) {
+                        await chat.sendMessage(msgText);
+                        console.log(`Message sent to WhatsApp group ${groupId}`);
+                    } else {
+                        console.error(`Group chat ${groupId} not found`);
+                    }
+                } catch (error) {
+                    console.error('Error sending message to WhatsApp group:', error);
+                }
             }
         } else {
-            const lastMessageTime = moment(messages[0]?.timestamp).utcOffset(process.env.TIMEZONE_OFFSET).format('DD/MM/YYYY HH:mm:ss (GMT+7)');
-            const chatId = `${process.env.WHATSAPP_GROUP_ID}@g.us`;
-            try {
-                const chats = await client.getChats();
-                const chat = chats.find(c => c.id._serialized === chatId);
-                if (chat) {
-                    await chat.sendMessage(`No Hell Watcher/Chaos Dragon found. Last event at ${lastMessageTime}`);
-                }
-            } catch (error) {
-                console.error('Failed to send fallback message to group');
-            }
-
-            message.reply(`No Hell Watcher/Chaos Dragon found. Last event at:\n${lastMessageTime}`);
+            console.log('No Hell/Chaos Dragon event detected in message');
         }
     } catch (error) {
-        console.error(error);
-        message.reply('Failed to fetch Hell event from Discord.');
+        console.error('Error during Discord message processing:', error);
     }
 };
