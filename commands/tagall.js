@@ -1,10 +1,9 @@
+const { WHATSAPP_GROUP_IDS } = process.env;
+
 module.exports = async (client, message) => {
-    const validGroupIds = [
-        '120363167287303832@g.us',
-        '120363329911125895@g.us',
-        '120363194079703816@g.us',
-        '120363364063161357@g.us'
-    ];
+    const validGroupIds = WHATSAPP_GROUP_IDS
+        ? WHATSAPP_GROUP_IDS.split(',').map(groupId => groupId.trim())
+        : [];
 
     // Make sure the message comes from a valid group
     if (!message.from.endsWith('@g.us') || !validGroupIds.includes(message.from)) {
@@ -26,7 +25,7 @@ module.exports = async (client, message) => {
             mentions.push(contact);
         }
 
-        await chat.sendMessage('Hello, semuanya!', { mentions });
+        await chat.sendMessage('*[TAG ALL]*\n\n', { mentions });
         console.log('Pesan tagall berhasil dikirim.');
     } catch (error) {
         console.error('Terjadi kesalahan saat menjalankan perintah !tagall:', error);

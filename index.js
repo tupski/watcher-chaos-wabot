@@ -3,42 +3,45 @@ const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const qrcode = require('qrcode-terminal');
 
-// Import Commands
+// Import command handlers
 const hellEventHandler = require('./commands/hell');
 
-// Inisialisasi WhatsApp dan Discord Client
+// initialize WhatsApp clients
 const whatsappClient = new WhatsAppClient({
     authStrategy: new LocalAuth({
         clientId: process.env.WHATSAPP_CLIENT_ID,
     }),
-    puppeteer: { headless: true },
+    puppeteer: { 
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    },
 });
 
+// initialize Discord clients
 const discordClient = new DiscordClient({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
-// QR Code untuk WhatsApp
+// qr code generator
 whatsappClient.on('qr', (qr) => {
     console.log('Scan QR Code untuk WhatsApp:');
     qrcode.generate(qr, { small: true });
 });
 
-// Handle WhatsApp Ready
-whatsappClient.on('ready', () => {
-    console.log('WhatsApp client is ready');
-});
+// handle ready event
+const readyHandler = require('./handlers/readyHandler');
+whatsappClient.on('ready', readyHandler);
 
-// Debugging untuk Discord
+// Discord ready event
 discordClient.on('ready', () => {
     console.log(`Discord logged in as: ${discordClient.user.tag}`);
 });
 
-// Handle pesan dari Discord
+// Discord message event
 discordClient.on('messageCreate', async (message) => {
     console.log('Pesan diterima dari Discord:', message.content);
     
-    // Periksa apakah pesan berasal dari channel yang dimaksud
+    // check if the message is from the correct channel
     if (message.channelId === process.env.DISCORD_CHANNEL_ID) {
         console.log('Memproses pesan karena channel ID cocok');
         try {
@@ -51,7 +54,7 @@ discordClient.on('messageCreate', async (message) => {
     }
 });
 
-// Tangani error pada Discord login
+// handle discord client login
 discordClient.login(process.env.DISCORD_TOKEN)
     .then(() => {
         console.log('Discord client logged in successfully');
@@ -60,5 +63,5 @@ discordClient.login(process.env.DISCORD_TOKEN)
         console.error('Failed to login to Discord client:', error);
     });
 
-// Login ke WhatsApp
+// Login to WhatsApp
 whatsappClient.initialize();
