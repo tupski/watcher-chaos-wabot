@@ -2,16 +2,31 @@ require('dotenv').config();
 const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const qrcode = require('qrcode-terminal');
+const qr = require('qrcode');
+const { server, io, app, setWhatsAppClient } = require('./server');
+const Message = require('./models/message');
+const path = require('path');
+const fs = require('fs');
+
+// Create data directory if it doesn't exist
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
 
 // Import command handlers
 const hellEventHandler = require('./commands/hell');
+const messageHandler = require('./handlers/messageHandler');
+
+// Set the WhatsApp client for API routes (will be updated when client is ready)
+setWhatsAppClient(null);
 
 // initialize WhatsApp clients
 const whatsappClient = new WhatsAppClient({
     authStrategy: new LocalAuth({
         clientId: process.env.WHATSAPP_CLIENT_ID,
     }),
-    puppeteer: { 
+    puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     },
@@ -19,18 +34,39 @@ const whatsappClient = new WhatsAppClient({
 
 // initialize Discord clients
 const discordClient = new DiscordClient({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
 // qr code generator
-whatsappClient.on('qr', (qr) => {
+whatsappClient.on('qr', (qrCode) => {
     console.log('Scan QR Code untuk WhatsApp:');
-    qrcode.generate(qr, { small: true });
+    qrcode.generate(qrCode, { small: true });
+
+    // Generate QR code as data URL for web interface
+    qr.toDataURL(qrCode, (err, url) => {
+        if (err) {
+            console.error('Error generating QR code for web:', err);
+            return;
+        }
+
+        // Emit QR code to connected clients
+        io.emit('qr', url);
+    });
 });
 
 // handle ready event
 const readyHandler = require('./handlers/readyHandler');
-whatsappClient.on('ready', readyHandler);
+whatsappClient.on('ready', () => {
+    console.log('WhatsApp client is ready!');
+    readyHandler(whatsappClient);
+
+    // Set the WhatsApp client for API routes
+    setWhatsAppClient(whatsappClient);
+    console.log('WhatsApp client set for API routes');
+
+    // Notify web clients that WhatsApp is connected
+    io.emit('whatsapp-connected');
+});
 
 // Discord ready event
 discordClient.on('ready', () => {
@@ -38,17 +74,18 @@ discordClient.on('ready', () => {
 });
 
 // Discord message event
+// Note: Since we're not using the MessageContent intent, we won't have access to message content
+// We'll just log that we received a message from the correct channel
 discordClient.on('messageCreate', async (message) => {
-    console.log('Pesan diterima dari Discord:', message.content);
-    
+    console.log('Pesan diterima dari Discord channel:', message.channelId);
+
     // check if the message is from the correct channel
     if (message.channelId === process.env.DISCORD_CHANNEL_ID) {
         console.log('Memproses pesan karena channel ID cocok');
-        try {
-            await hellEventHandler(whatsappClient, message);
-        } catch (error) {
-            console.error('Error saat memproses pesan Discord:', error);
-        }
+        // Without MessageContent intent, we can't process the message content
+        // You'll need to enable the MessageContent intent in the Discord Developer Portal
+        // to make this work properly
+        console.log('Note: To process message content, enable MessageContent intent in Discord Developer Portal');
     } else {
         console.log('Pesan datang dari channel yang tidak cocok');
     }
@@ -62,6 +99,82 @@ discordClient.login(process.env.DISCORD_TOKEN)
     .catch((error) => {
         console.error('Failed to login to Discord client:', error);
     });
+
+// Handle WhatsApp message events
+whatsappClient.on('message', async (message) => {
+    try {
+        // Process commands
+        await messageHandler(whatsappClient, message);
+
+        // Store the message in our database
+        const contact = await message.getContact();
+        const chat = await message.getChat();
+
+        const messageData = {
+            type: 'received',
+            contact: chat.isGroup ? chat.name : contact.pushname || contact.number,
+            body: message.body,
+            status: 'received'
+        };
+
+        const savedMessage = Message.create(messageData);
+
+        // Emit new message to web clients
+        io.emit('new-message', savedMessage);
+    } catch (error) {
+        console.error('Error handling incoming message:', error);
+    }
+});
+
+// Handle WhatsApp message_create events (outgoing messages)
+whatsappClient.on('message_create', async (message) => {
+    // Only process messages created by the user (not by the bot itself)
+    if (!message.fromMe) return;
+
+    try {
+        const chat = await message.getChat();
+
+        const messageData = {
+            type: 'sent',
+            contact: chat.isGroup ? chat.name : chat.name || message.to,
+            body: message.body,
+            status: 'sent'
+        };
+
+        const savedMessage = Message.create(messageData);
+
+        // Emit new message to web clients
+        io.emit('new-message', savedMessage);
+    } catch (error) {
+        console.error('Error handling outgoing message:', error);
+    }
+});
+
+// Handle socket.io events
+io.on('connection', (socket) => {
+    console.log('Web client connected');
+
+    // Handle refresh QR code request
+    socket.on('refresh-qr', () => {
+        console.log('QR code refresh requested');
+        whatsappClient.logout();
+        setTimeout(() => {
+            whatsappClient.initialize();
+        }, 1000);
+    });
+
+    // Handle delete message request
+    socket.on('delete-message', async (id) => {
+        console.log(`Delete message requested for ID: ${id}`);
+        // Implement WhatsApp message deletion if needed
+    });
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
 
 // Login to WhatsApp
 whatsappClient.initialize();

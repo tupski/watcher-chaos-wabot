@@ -1,0 +1,120 @@
+/* Dashboard styles */
+body {
+    font-size: .875rem;
+    background-color: #f8f9fa;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-heading {
+    font-size: .75rem;
+    text-transform: uppercase;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #adb5bd;
+}
+
+.sidebar .nav-link.active {
+    color: #fff;
+}
+
+.sidebar .nav-link:hover {
+    color: #fff;
+}
+
+.sidebar .nav-link i {
+    margin-right: 4px;
+}
+
+main {
+    padding-top: 48px;
+}
+
+/* QR Code styles */
+.qr-container {
+    max-width: 300px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#qr-code-canvas {
+    width: 100%;
+    height: auto;
+}
+
+/* Table styles */
+.table-responsive {
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+/* Message table styles */
+.message-sent {
+    background-color: #d1e7dd !important;
+}
+
+.message-received {
+    background-color: #cfe2ff !important;
+}
+
+.message-failed {
+    background-color: #f8d7da !important;
+}
+
+.message-text {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Group table styles */
+.text-truncate {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.copy-id-btn:hover {
+    background-color: #0dcaf0;
+    color: #fff;
+}
+
+/* Pagination styles */
+.pagination {
+    margin-top: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: static;
+        height: auto;
+        padding-top: 0;
+    }
+
+    main {
+        padding-top: 1rem;
+    }
+}

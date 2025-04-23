@@ -2,7 +2,7 @@
 ## `Chaos & Watcher` Notification
 
 ## 🚀 Introduction
-Welcome to the **Chaos Watcher WhatsApp Bot**!  
+Welcome to the **Chaos Watcher WhatsApp Bot**!
 This bot integrates WhatsApp messaging features with custom commands to make your WhatsApp experience more interactive. Built with **Node.js** and [**WhatsApp Web.js**](https://wwebjs.dev/), this bot serves as a versatile communication tool.
 
 Special thanks to [HephBot](https://hephbot.com) for providing inspiration and the Hell Event bot implementation on Discord. Their work has been pivotal for creating fun and interactive bots.
@@ -15,7 +15,7 @@ Special thanks to [HephBot](https://hephbot.com) for providing inspiration and t
 The bot supports the following commands:
 
 | Command | Description | Example | Output Example|
-|-----------|-----------------------------------------------------------------------------|----------------------------------|----------------------------|                     
+|-----------|-----------------------------------------------------------------------------|----------------------------------|----------------------------|
 | **`!yell`** | Allows users to send a custom fun message to groups or specific channels. | `!yell Hello World!` | Hello World!
 | **`!uptime`** | Displays how long the bot has been running. | `!uptime` | `Uptime: 0h 9m 58s` |
 | **`!ping`**   | A quick way to check if the bot is active and online. | `!ping` | N/A |
@@ -39,6 +39,11 @@ Currently, the following feature is still under development:
 - **Command Responses**: The bot listens to specific commands sent to group chats and responds accordingly.
 - **Command Testing**: Commands such as `!hell`, `!ping`, `!uptime`, and `!yell` return interactive responses directly to the group.
 - **Bot Stability**: Ensures all commands work reliably under various network conditions.
+- **Web Interface**: A responsive web dashboard to view QR codes, message logs, and manage the bot.
+  - **QR Code Scanner**: Easily scan the WhatsApp QR code from the web interface.
+  - **Message Log**: View all sent and received messages in a paginated table.
+  - **Real-time Updates**: Messages appear in real-time as they are sent or received.
+  - **Message Management**: View message details and delete messages from the interface.
 
 ---
 
@@ -65,6 +70,10 @@ Next, install all required dependencies by running:
 - In the application settings, navigate to the **Bot** tab and click **"Add Bot"**.
   - Under the **Bot** tab, locate the Token. Copy this token.
     - This is your Discord API Key.
+
+> **Important**: For full functionality, you need to enable the **MESSAGE CONTENT** intent in the Discord Developer Portal. See [DISCORD_SETUP.md](DISCORD_SETUP.md) for detailed instructions.
+>
+> If you want to enable Discord login for the web interface, you'll need to set up OAuth2. See [DISCORD_OAUTH_SETUP.md](DISCORD_OAUTH_SETUP.md) for instructions.
 ---
 #### **Step 2: Get Your WhatsApp Group IDs**
 - Open WhatsApp and set up groups for your bot's intended use.
@@ -102,13 +111,26 @@ Next, install all required dependencies by running:
 
 ### 4. Start the Bot:
    ```bash
-   node index.js
+   npm start
    ```
-### 5. **Monitor the Logs:**
+### 5. **Access the Web Interface:**
+After starting the bot, you can access the web interface by opening your browser and navigating to:
+
+   ```
+   http://localhost:3000
+   ```
+
+From the web interface, you can:
+- Scan the QR code to authenticate WhatsApp
+- View and manage messages
+- Monitor the bot's status in real-time
+
+### 6. **Monitor the Logs:**
 After successful startup, you should see:
 
    ```bash
    WhatsApp bot is ready!
+   Server running on port 3000
    ```
 
 ---
@@ -126,8 +148,8 @@ This project is licensed under the [MIT License](https://opensource.org/licenses
 ## 📄 Contribution & Support
 We value your feedback! If you encounter any bugs, issues, or have suggestions to improve the bot, feel free to submit an issue via [GitHub Issues](https://github.com/tupski/watcher-chaos-wabot/issues). Contributions through pull requests are always welcome!
 
-- 🐞 **Found a bug?** Report it via GitHub Issues.  
-- 💬 **Have a feature suggestion?** Share your thoughts!  
+- 🐞 **Found a bug?** Report it via GitHub Issues.
+- 💬 **Have a feature suggestion?** Share your thoughts!
 - 🛠️ **Want to contribute?** Fork the repository and submit a pull request.
 
 Your support helps make this project better for everyone. Thank you!
@@ -135,7 +157,7 @@ Your support helps make this project better for everyone. Thank you!
 ---
 
 ## 📚 Additional Resources
-For more information about WhatsApp Web API integration, visit the [wwebjs.dev Documentation](https://wwebjs.dev/).  
+For more information about WhatsApp Web API integration, visit the [wwebjs.dev Documentation](https://wwebjs.dev/).
 It contains valuable information about WhatsApp's web client, its capabilities, and how you can extend the functionalities with **whatsapp-web.js**.
 
 We hope you enjoy using this bot! If you face any setup challenges or technical issues, consult the documentation or reach out for assistance. Your journey matters to us!
