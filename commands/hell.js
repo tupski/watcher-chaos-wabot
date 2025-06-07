@@ -115,11 +115,22 @@ module.exports = async (whatsappClient, message) => {
                         return;
                     } else {
                         // No Hell Event information found in the latest message
-                        await message.reply(
-                            "🔥 *Hell Event Watcher* 🔥\n\n" +
-                            "The latest Discord message does not contain Hell Event information.\n\n" +
-                            "No Hell Watcher / Chaos right now."
-                        );
+                        // Check for last saved event data
+                        let lastEventData = getLastHellEvent();
+                        if (lastEventData && lastEventData.timestamp) {
+                            const lastEventTime = moment(lastEventData.timestamp).utcOffset(process.env.TIMEZONE_OFFSET || 7);
+                            await message.reply(
+                                "🔥 *Hell Event Watcher* 🔥\n\n" +
+                                "Tidak ada Hell Event untuk Watcher dan Chaos Dragon saat ini.\n\n" +
+                                `Terakhir pada: *${lastEventTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`
+                            );
+                        } else {
+                            await message.reply(
+                                "🔥 *Hell Event Watcher* 🔥\n\n" +
+                                "Tidak ada Hell Event untuk Watcher dan Chaos Dragon saat ini.\n\n" +
+                                "Terakhir pada: *Data tidak tersedia*"
+                            );
+                        }
                         return;
                     }
                 } else {
@@ -147,7 +158,23 @@ module.exports = async (whatsappClient, message) => {
                         if (now.isBefore(eventEndTime)) {
                             // Event is still active, calculate remaining time
                             const timeLeftMinutes = Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes());
-                            const timeLeftFormatted = `${timeLeftMinutes}m left`;
+                            let timeLeftFormatted;
+
+                            if (timeLeftMinutes <= 0) {
+                                // Event sudah berakhir, hitung berapa jam yang lalu
+                                const hoursAgo = Math.floor(moment.duration(now.diff(eventEndTime)).asHours());
+                                if (hoursAgo === 1) {
+                                    timeLeftFormatted = `Ended 1 hour ago`;
+                                } else if (hoursAgo > 1) {
+                                    timeLeftFormatted = `Ended ${hoursAgo} hours ago`;
+                                } else {
+                                    // Kurang dari 1 jam, tampilkan dalam menit
+                                    const minutesAgo = Math.floor(moment.duration(now.diff(eventEndTime)).asMinutes());
+                                    timeLeftFormatted = `Ended ${minutesAgo}m ago`;
+                                }
+                            } else {
+                                timeLeftFormatted = `${timeLeftMinutes}m left`;
+                            }
 
                             let replyMessage = `🔥 *Hell Event* 🔥\n\n`;
                             replyMessage += `*Reward(s):* ${lastEventData.eventName}\n`;
@@ -191,8 +218,8 @@ module.exports = async (whatsappClient, message) => {
                             // Event has ended
                             await message.reply(
                                 "🔥 *Hell Event Watcher* 🔥\n\n" +
-                                "No active Hell Events at the moment.\n\n" +
-                                `Last event ended at *${eventEndTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`
+                                "Tidak ada Hell Event untuk Watcher dan Chaos Dragon saat ini.\n\n" +
+                                `Terakhir pada: *${eventEndTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`
                             );
                             return;
                         }
@@ -200,8 +227,8 @@ module.exports = async (whatsappClient, message) => {
                         // No saved data
                         await message.reply(
                             "🔥 *Hell Event Watcher* 🔥\n\n" +
-                            "No Hell Watcher / Chaos right now.\n\n" +
-                            "No previous event data found."
+                            "Tidak ada Hell Event untuk Watcher dan Chaos Dragon saat ini.\n\n" +
+                            "Terakhir pada: *Data tidak tersedia*"
                         );
                         return;
                     }
@@ -253,20 +280,37 @@ module.exports = async (whatsappClient, message) => {
             if (now.isAfter(eventEndTime)) {
                 msgText = `Hell Watcher/Chaos Dragon *not available right now.*\nLast event at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\nEvent: *${eventName}*\nTask: *${taskName}*`;
             } else {
-                // Hitung waktu yang tersisa dalam format "Xm left"
-                let timeLeftFormatted = `${Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes())}m left`;
+                // Hitung waktu yang tersisa dalam menit
+                const minutesLeft = Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes());
+                let timeLeftFormatted;
+
+                if (minutesLeft <= 0) {
+                    // Event sudah berakhir, hitung berapa jam yang lalu
+                    const hoursAgo = Math.floor(moment.duration(now.diff(eventEndTime)).asHours());
+                    if (hoursAgo === 1) {
+                        timeLeftFormatted = `Ended 1 hour ago`;
+                    } else if (hoursAgo > 1) {
+                        timeLeftFormatted = `Ended ${hoursAgo} hours ago`;
+                    } else {
+                        // Kurang dari 1 jam, tampilkan dalam menit
+                        const minutesAgo = Math.floor(moment.duration(now.diff(eventEndTime)).asMinutes());
+                        timeLeftFormatted = `Ended ${minutesAgo}m ago`;
+                    }
+                } else {
+                    timeLeftFormatted = `${minutesLeft}m left`;
+                }
 
                 // Buat pesan yang akan dikirim ke WhatsApp groups
                 // Format the message according to the new requirements
-                // Red Orb, Ancient Core : Reward(s)
-                // Merging, Building : Task(s)
-                // 59m left : time left (calculated)
-                // 441K : Phase 3 points
+                // *Reward(s)*: Red Orb, Ancient Core
+                // *Task(s)*: Merging, Building
+                // *Time left*: 59m left or Ended x hours ago
+                // *Phase 3 points*: 441K
                 msgText = `🔥 *Hell Event* 🔥\n\n`;
-                msgText += `*${eventName}* : Reward(s)\n`;
-                msgText += `*${taskName}* : Task(s)\n`;
-                msgText += `*${timeLeftFormatted}* : Time left\n`;
-                msgText += `*${points}* : Phase 3 points\n\n`;
+                msgText += `*Reward(s)*: ${eventName}\n`;
+                msgText += `*Task(s)*: ${taskName}\n`;
+                msgText += `*Time left*: ${timeLeftFormatted}\n`;
+                msgText += `*Phase 3 points*: ${points}\n\n`;
                 msgText += `Message received at: *${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
             }
 

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const antiSpamLink = require('../middleware/antiSpamLink');
 
 /**
  * Handles incoming messages from WhatsApp.
@@ -17,6 +18,15 @@ const path = require('path');
  */
 module.exports = async (client, message) => {
     console.log('Received message:', message.body);
+
+    // Check for spam links first (before processing commands)
+    const allowedLinks = process.env.ALLOWED_LINKS ? process.env.ALLOWED_LINKS.split(',') : [];
+    const wasDeleted = await antiSpamLink(message, allowedLinks);
+
+    if (wasDeleted) {
+        console.log('Message was deleted due to unauthorized links');
+        return;
+    }
 
     // Abaikan pesan yang tidak diawali dengan "!"
     if (!message.body.startsWith('!')) {

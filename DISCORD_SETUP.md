@@ -2,6 +2,22 @@
 
 This guide will help you set up your Discord bot with the correct permissions and intents to work with this application.
 
+## Getting Your Discord Bot Token
+
+The `DISCORD_TOKEN` is your bot's authentication token that allows it to connect to Discord.
+
+### Steps to Get Your Discord Bot Token:
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click "New Application" or select your existing application
+3. Give your application a name (e.g., "Hell Event Watcher")
+4. Navigate to the "Bot" tab in the left sidebar
+5. Click "Add Bot" if you haven't created a bot yet
+6. Under the "Token" section, click "Copy" to copy your bot token
+7. Add this token to your `.env` file as `DISCORD_TOKEN=your_token_here`
+
+**⚠️ Important:** Never share your bot token publicly! Keep it secret and secure.
+
 ## Enabling Privileged Intents
 
 If you want to use features that require access to message content (like the `!hell` command handler), you'll need to enable the `MESSAGE CONTENT` intent in the Discord Developer Portal.

@@ -3,7 +3,7 @@ const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const qrcode = require('qrcode-terminal');
 const qr = require('qrcode');
-const { server, io, app, setWhatsAppClient } = require('./server');
+const { server, io, setWhatsAppClient } = require('./server');
 const Message = require('./models/message');
 const path = require('path');
 const fs = require('fs');
@@ -34,7 +34,11 @@ const whatsappClient = new WhatsAppClient({
 
 // initialize Discord clients
 const discordClient = new DiscordClient({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ],
 });
 
 // qr code generator
@@ -74,18 +78,20 @@ discordClient.on('ready', () => {
 });
 
 // Discord message event
-// Note: Since we're not using the MessageContent intent, we won't have access to message content
-// We'll just log that we received a message from the correct channel
 discordClient.on('messageCreate', async (message) => {
     console.log('Pesan diterima dari Discord channel:', message.channelId);
 
     // check if the message is from the correct channel
     if (message.channelId === process.env.DISCORD_CHANNEL_ID) {
         console.log('Memproses pesan karena channel ID cocok');
-        // Without MessageContent intent, we can't process the message content
-        // You'll need to enable the MessageContent intent in the Discord Developer Portal
-        // to make this work properly
-        console.log('Note: To process message content, enable MessageContent intent in Discord Developer Portal');
+        console.log('Message content:', message.content);
+
+        // Process Hell Event messages
+        try {
+            await hellEventHandler(whatsappClient, message);
+        } catch (error) {
+            console.error('Error processing Discord message for Hell Event:', error);
+        }
     } else {
         console.log('Pesan datang dari channel yang tidak cocok');
     }
