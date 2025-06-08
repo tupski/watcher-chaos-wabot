@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const antiSpamLink = require('../middleware/antiSpamLink');
+const { canExecuteCommand } = require('../utils/groupSettings');
 
 /**
  * Handles incoming messages from WhatsApp.
@@ -34,28 +35,55 @@ module.exports = async (client, message) => {
         return;
     }
 
-    // Ambil nama perintah (misalnya "!tagall" menjadi "tagall")
+    // Extract command name
     const commandName = message.body.split(' ')[0].substring(1).toLowerCase();
     console.log('Command name extracted:', commandName);
 
-    const commandPath = path.join(__dirname, '..', 'commands', `${commandName}.js`);
+    // Check command permissions
+    const hasPermission = await canExecuteCommand(message, commandName, client);
+    if (!hasPermission) {
+        await message.reply('❌ You do not have permission to use this command.');
+        return;
+    }
+
+    // Map commands to their files
+    const commandMap = {
+        'hell': 'hellCommand.js',
+        'monster': 'monster.js',
+        'tagall': 'tagall.js',
+        'ping': 'ping.js',
+        'ai': 'ai.js',
+        'help': 'help.js',
+        'cmd': 'cmd.js',
+        'debug': 'debug.js'
+    };
+
+    // Get the actual command file
+    const commandFile = commandMap[commandName];
+    if (!commandFile) {
+        console.log(`Unknown command: "${commandName}".`);
+        await message.reply(`Unknown command: !${commandName}\n\nUse !help to see available commands.`);
+        return;
+    }
+
+    // Construct the path to the command file
+    const commandPath = path.join(__dirname, '..', 'commands', commandFile);
     console.log('Command path:', commandPath);
 
-    // Periksa apakah file perintah ada
+    // Check if the command file exists
     if (fs.existsSync(commandPath)) {
         console.log(`Command file found for "${commandName}". Executing command.`);
         try {
-            // Muat file perintah dan jalankan
+            // Load and execute the command
             const command = require(commandPath);
             await command(client, message);
             console.log(`Command "${commandName}" executed successfully.`);
         } catch (error) {
             console.error(`Error executing command "${commandName}":`, error);
-            message.reply(`Maaf, terjadi kesalahan saat menjalankan perintah "${commandName}".`);
+            await message.reply('An error occurred while executing the command.');
         }
     } else {
-        console.log(`Command "${commandName}" not found.`);
-        // Tanggapan jika perintah tidak ditemukan
-        message.reply(`Perintah "${commandName}" tidak ditemukan.`);
+        console.log(`Command file not found for "${commandName}".`);
+        await message.reply(`Command file not found: !${commandName}`);
     }
 };

@@ -23,6 +23,8 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
  * If an event is detected, it calculates the time remaining and formats a message to be sent to WhatsApp groups.
  * It handles errors during message processing and logs any issues encountered.
  */
+const { shouldReceiveHellNotifications } = require('../utils/groupSettings');
+
 module.exports = async (whatsappClient, message) => {
     const whatsappGroupIds = process.env.WHATSAPP_GROUP_IDS ? process.env.WHATSAPP_GROUP_IDS.split(',') : [];
 
@@ -405,7 +407,7 @@ module.exports = async (whatsappClient, message) => {
             // Check if we should filter for only Watcher/Chaos Dragon events
             const onlyWatcherChaos = process.env.ONLY_WATCHER_CHAOS === 'true';
             const isWatcherOrChaos = eventName && (eventName.toLowerCase().includes('watcher') ||
-                                   eventName.toLowerCase().includes('chaos dragon'));
+                                    eventName.toLowerCase().includes('chaos dragon'));
 
             console.log(`Found Hell Event: Reward="${eventName}" | Task="${taskName}" | ${minutesLeft}m left | ${points}`);
             console.log(`Filter setting: ONLY_WATCHER_CHAOS=${onlyWatcherChaos}, isWatcherOrChaos=${isWatcherOrChaos}`);
@@ -477,13 +479,20 @@ module.exports = async (whatsappClient, message) => {
                 }
                 msgText += `*Time left*: ${timeLeftFormatted}\n`;
                 msgText += `*Phase 3 points*: ${points}\n\n`;
-                msgText += `Message received at: *${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+                msgText += `Message received at:*\n${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
             }
 
             // Only send to WhatsApp groups if there are any configured
             if (whatsappGroupIds.length > 0) {
                 for (const groupId of whatsappGroupIds) {
                     try {
+                        // Check if this group should receive hell notifications
+                        const eventType = isWatcherOrChaos ? (eventName.toLowerCase().includes('watcher') ? 'watcher' : 'chaos') : 'other';
+                        if (!shouldReceiveHellNotifications(groupId.trim(), eventType)) {
+                            console.log(`Skipping group ${groupId} - notifications disabled or filtered`);
+                            continue;
+                        }
+
                         // Ambil daftar chat WhatsApp
                         const chats = await whatsappClient.getChats();
                         const chat = chats.find(c => c.id._serialized === groupId.trim());

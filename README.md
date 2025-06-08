@@ -29,7 +29,14 @@ Currently, the following feature is still under development:
 |-----------|------------------------------------------------|
 | **`!tagall`** | Tags all group members with an optional message. Usage: `!tagall [message]` |
 | **`!hell`** | Displays the ongoing Hell Event data. If no events are currently active, it will show the last event time. |
+| **`!hell watcherchaos`** | Enable only Watcher/Chaos Dragon notifications (admin only) |
+| **`!hell all/on`** | Enable all Hell Event notifications (admin only) |
+| **`!hell off`** | Disable Hell Event notifications for this group (admin only) |
+| **`!hell status`** | Check current Hell Event notification settings |
 | **`!monster`** | Shows today and tomorrow monster rotation. Usage: `!monster` or `!monster [monster_name]` |
+| **`!ai`** | Ask AI assistant a question. Usage: `!ai <your question>` |
+| **`!cmd`** | Set command permissions (admin only). Usage: `!cmd <command> <admin/all>` |
+| **`!help`** | Show complete help and command reference |
 
 ### Anti Spam Link
 * This feature automatically blocks or prevents the spread of harmful, spammy, or unwanted links in WhatsApp groups.
@@ -40,6 +47,24 @@ Currently, the following feature is still under development:
 * Automatic notifications at 11:55 AM (GMT+7) when monsters reset
 * Search specific monsters to see when they will spawn
 * 12-day rotation cycle with monsters like Gargantua, Hardrox, Jade Wyrm, etc.
+
+### AI Assistant
+* Powered by Google Gemini AI for intelligent responses
+* Ask questions using `!ai <your question>`
+* Quotes user questions and provides detailed answers
+* Safety filters enabled for appropriate responses
+
+### Permission Management
+* Per-group command permissions (admin/all members)
+* Hell Event notification preferences per group
+* Settings are isolated per group (won't affect other groups)
+* Admin-only commands: `!cmd` and Hell Event settings
+
+### Enhanced Hell Event System
+* Configurable notifications: all events, Watcher/Chaos only, or disabled
+* Per-group settings for notification preferences
+* Automatic filtering based on group preferences
+* Status checking with `!hell status`
 ---
 
 ## 🛠️ Features & Output
