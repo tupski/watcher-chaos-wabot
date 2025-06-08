@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyWebhookSignature, processPaymentNotification } = require('../utils/xenditPayment');
-const { setRentMode, getAllGroupsSettings } = require('../utils/groupSettings');
+const { setRentMode, extendRentMode, getAllGroupsSettings, isRentActive } = require('../utils/groupSettings');
 
 // Store WhatsApp client reference
 let whatsappClient = null;
@@ -69,9 +69,32 @@ router.post('/webhook/invoice', async (req, res) => {
             metadata
         } = notification;
 
-        const groupId = metadata.group_id;
-        const duration = metadata.duration;
-        const ownerContactId = metadata.owner_id;
+        // Parse metadata or extract from external_id if metadata is missing
+        let groupId, duration, ownerContactId;
+
+        if (metadata && metadata.group_id) {
+            groupId = metadata.group_id;
+            duration = metadata.duration;
+            ownerContactId = metadata.owner_id;
+        } else {
+            // Fallback: parse from external_id (RENT_groupId_timestamp or PROMO_groupId_timestamp)
+            console.log(`[${timestamp}] Metadata missing, parsing from external_id: ${orderId}`);
+            const parts = orderId.split('_');
+            if (parts.length >= 2) {
+                groupId = parts[1] + '@g.us';
+                // Default duration based on order type
+                if (parts[0] === 'PROMO') {
+                    duration = '30'; // Default promo duration
+                } else {
+                    duration = '7'; // Default duration
+                }
+                ownerContactId = 'unknown@c.us';
+                console.log(`[${timestamp}] Parsed from external_id - Group: ${groupId}, Duration: ${duration}`);
+            } else {
+                console.error(`[${timestamp}] Cannot parse group info from external_id: ${orderId}`);
+                return res.status(400).json({ error: 'Cannot extract group information' });
+            }
+        }
 
         console.log(`[${timestamp}] Processing webhook - Order: ${orderId}, Status: ${status}, Group: ${groupId}, Duration: ${duration} days, Amount: IDR ${amount}`);
 
@@ -338,6 +361,163 @@ router.post('/failed', async (req, res) => {
     }
 });
 
+// Payment Method V2 webhooks (/v2/payment_methods)
+router.post('/method/created', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Payment Method V2 webhook received (method.created):`, {
+            event: req.body.event,
+            method_id: req.body.data?.id,
+            type: req.body.data?.type,
+            status: req.body.data?.status
+        });
+
+        res.status(200).json({ status: 'OK', message: 'Payment method created webhook processed' });
+
+    } catch (error) {
+        console.error('Error handling Payment Method created webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/method/activated', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Payment Method V2 webhook received (method.activated):`, {
+            event: req.body.event,
+            method_id: req.body.data?.id,
+            type: req.body.data?.type,
+            status: req.body.data?.status
+        });
+
+        res.status(200).json({ status: 'OK', message: 'Payment method activated webhook processed' });
+
+    } catch (error) {
+        console.error('Error handling Payment Method activated webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/method/expired', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Payment Method V2 webhook received (method.expired):`, {
+            event: req.body.event,
+            method_id: req.body.data?.id,
+            type: req.body.data?.type,
+            status: req.body.data?.status
+        });
+
+        res.status(200).json({ status: 'OK', message: 'Payment method expired webhook processed' });
+
+    } catch (error) {
+        console.error('Error handling Payment Method expired webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Payment Requests V3 webhooks (/v3/payment_requests)
+router.post('/v3/succeeded', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Payment Request V3 webhook received (payment.succeeded):`, {
+            event: req.body.event,
+            payment_id: req.body.data?.id,
+            reference_id: req.body.data?.reference_id,
+            amount: req.body.data?.amount,
+            status: req.body.data?.status
+        });
+
+        // Handle V3 payment success
+        if (req.body.event === 'payment.succeeded' && req.body.data) {
+            const paymentData = req.body.data;
+
+            // Extract group info from reference_id if available
+            if (paymentData.reference_id) {
+                const parts = paymentData.reference_id.split('_');
+                if (parts.length >= 3) {
+                    const groupId = parts[1] + '@g.us';
+                    const amount = paymentData.amount;
+
+                    console.log(`[${timestamp}] Processing Payment Request V3 success for group ${groupId}, amount: IDR ${amount}`);
+
+                    // Process payment success
+                    const { processPaymentNotification } = require('../utils/xenditPayment');
+                    const notification = await processPaymentNotification({
+                        id: paymentData.id,
+                        external_id: paymentData.reference_id,
+                        status: 'PAID',
+                        amount: paymentData.amount,
+                        paid_at: new Date().toISOString(),
+                        metadata: {
+                            group_id: groupId,
+                            duration: parts[0] === 'PROMO' ? '30' : '7', // Default duration
+                            owner_id: 'unknown@c.us'
+                        }
+                    });
+
+                    if (notification.success) {
+                        const { handleSuccessfulPayment } = require('../routes/payment');
+                        await handleSuccessfulPayment(
+                            paymentData.reference_id,
+                            groupId,
+                            notification.metadata.duration,
+                            notification.metadata.owner_id,
+                            paymentData.amount
+                        );
+                        console.log(`[${timestamp}] V3 payment processed successfully for group ${groupId}`);
+                    }
+                }
+            }
+        }
+
+        res.status(200).json({ status: 'OK', message: 'Payment request V3 succeeded webhook processed' });
+
+    } catch (error) {
+        console.error('Error handling Payment Request V3 succeeded webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/v3/failed', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Payment Request V3 webhook received (payment.failed):`, {
+            event: req.body.event,
+            payment_id: req.body.data?.id,
+            reference_id: req.body.data?.reference_id,
+            amount: req.body.data?.amount,
+            status: req.body.data?.status,
+            failure_code: req.body.data?.failure_code
+        });
+
+        res.status(200).json({ status: 'OK', message: 'Payment request V3 failed webhook processed' });
+
+    } catch (error) {
+        console.error('Error handling Payment Request V3 failed webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/v3/pending', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Payment Request V3 webhook received (payment.pending):`, {
+            event: req.body.event,
+            payment_id: req.body.data?.id,
+            reference_id: req.body.data?.reference_id,
+            amount: req.body.data?.amount,
+            status: req.body.data?.status
+        });
+
+        res.status(200).json({ status: 'OK', message: 'Payment request V3 pending webhook processed' });
+
+    } catch (error) {
+        console.error('Error handling Payment Request V3 pending webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Legacy webhook endpoint untuk backward compatibility
 router.post('/notification', async (req, res) => {
     console.log('Legacy webhook endpoint called, redirecting to /webhook/invoice');
@@ -349,15 +529,12 @@ router.post('/notification', async (req, res) => {
 async function handleSuccessfulPayment(orderId, groupId, duration, ownerContactId, amount) {
     try {
         console.log(`Processing successful payment: ${orderId} for group: ${groupId}`);
-        
-        // Calculate expiry date
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + parseInt(duration));
-        expiryDate.setHours(23, 59, 59, 999);
-        
-        // Get owner info
+
+        // Get owner info with multiple fallback methods
         let ownerInfo = null;
-        if (whatsappClient) {
+
+        // Method 1: Try to get from ownerContactId if valid
+        if (whatsappClient && ownerContactId && ownerContactId !== 'unknown@c.us') {
             try {
                 const contact = await whatsappClient.getContactById(ownerContactId);
                 ownerInfo = {
@@ -365,43 +542,116 @@ async function handleSuccessfulPayment(orderId, groupId, duration, ownerContactI
                     number: contact.number,
                     id: contact.id._serialized
                 };
+                console.log('✅ Owner info from contact ID:', ownerInfo);
             } catch (error) {
-                console.error('Error getting contact info:', error);
-                ownerInfo = {
-                    name: 'Unknown',
-                    number: 'unknown',
-                    id: ownerContactId
-                };
+                console.error('Error getting contact info from ID:', error);
             }
         }
-        
-        // Activate rent
-        const success = setRentMode(
-            groupId,
-            true,
-            expiryDate,
-            ownerInfo,
-            parseInt(duration),
-            parseInt(amount),
-            orderId
-        );
-        
-        if (success) {
-            console.log(`Rent activated for group: ${groupId} until ${expiryDate.toISOString()}`);
-            
-            // Send confirmation to group
-            await sendPaymentConfirmation(groupId, orderId, duration, amount, expiryDate);
-            
-            // Send confirmation to owner
-            if (ownerContactId) {
-                await sendOwnerConfirmation(ownerContactId, orderId, duration, amount, expiryDate);
+
+        // Method 2: Try to get from stored payment data
+        if (!ownerInfo || ownerInfo.name === 'Unknown') {
+            try {
+                const paymentData = await getStoredPaymentData(orderId);
+                if (paymentData && paymentData.ownerInfo) {
+                    ownerInfo = paymentData.ownerInfo;
+                    console.log('✅ Owner info from stored payment data:', ownerInfo);
+                }
+            } catch (error) {
+                console.error('Error getting stored payment data:', error);
+            }
+        }
+
+        // Method 3: Try to get from group participants (find admin who made recent payment)
+        if (!ownerInfo || ownerInfo.name === 'Unknown') {
+            try {
+                ownerInfo = await getOwnerInfoFromGroup(groupId, orderId);
+                if (ownerInfo) {
+                    console.log('✅ Owner info from group participants:', ownerInfo);
+                }
+            } catch (error) {
+                console.error('Error getting owner info from group:', error);
+            }
+        }
+
+        // Method 4: Fallback to unknown
+        if (!ownerInfo) {
+            ownerInfo = {
+                name: 'Unknown',
+                number: 'unknown',
+                id: ownerContactId || 'unknown@c.us'
+            };
+            console.log('⚠️ Using fallback owner info:', ownerInfo);
+        }
+
+        // Check if bot is already active in rent mode
+        const isCurrentlyActive = isRentActive(groupId);
+        let success = false;
+        let finalExpiryDate = null;
+
+        if (isCurrentlyActive) {
+            // Extend existing rent
+            console.log(`Bot already active, extending rent by ${duration} days`);
+            success = extendRentMode(
+                groupId,
+                parseInt(duration),
+                ownerInfo,
+                parseInt(amount),
+                orderId
+            );
+
+            if (success) {
+                // Get the new expiry date
+                const { getRentStatus } = require('../utils/groupSettings');
+                const rentStatus = getRentStatus(groupId);
+                finalExpiryDate = rentStatus.rentExpiry;
+                console.log(`Rent extended for group: ${groupId} until ${finalExpiryDate.toISOString()}`);
             }
         } else {
-            console.error(`Failed to activate rent for group: ${groupId}`);
+            // Activate new rent
+            console.log(`Activating new rent for ${duration} days`);
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + parseInt(duration));
+            expiryDate.setHours(23, 59, 59, 999);
+
+            success = setRentMode(
+                groupId,
+                true,
+                expiryDate,
+                ownerInfo,
+                parseInt(duration),
+                parseInt(amount),
+                orderId
+            );
+
+            if (success) {
+                finalExpiryDate = expiryDate;
+                console.log(`Rent activated for group: ${groupId} until ${finalExpiryDate.toISOString()}`);
+            }
         }
-        
+
+        if (success && finalExpiryDate) {
+            // Send confirmation to group
+            await sendPaymentConfirmation(groupId, orderId, duration, amount, finalExpiryDate, isCurrentlyActive);
+
+            // Send confirmation to owner
+            if (ownerContactId && ownerContactId !== 'unknown@c.us') {
+                await sendOwnerConfirmation(ownerContactId, orderId, duration, amount, finalExpiryDate, isCurrentlyActive);
+            }
+
+            // Send notification to BOT_OWNER
+            await sendBotOwnerNotification(groupId, orderId, duration, amount, finalExpiryDate, isCurrentlyActive, ownerInfo);
+        } else {
+            console.error(`Failed to ${isCurrentlyActive ? 'extend' : 'activate'} rent for group: ${groupId}`);
+
+            // Send notification to BOT_OWNER about failed activation
+            await sendBotOwnerFailureNotification(groupId, orderId, duration, amount, ownerInfo);
+        }
+
     } catch (error) {
         console.error('Error handling successful payment:', error);
+
+        // Send error notification to BOT_OWNER
+        await sendBotOwnerErrorNotification(orderId, groupId, error.message);
     }
 }
 
@@ -458,65 +708,329 @@ async function handlePendingPayment(orderId, groupId, ownerContactId) {
 }
 
 // Send payment confirmation to group
-async function sendPaymentConfirmation(groupId, orderId, duration, amount, expiryDate) {
+async function sendPaymentConfirmation(groupId, orderId, duration, amount, expiryDate, isExtension = false) {
     try {
         if (!whatsappClient) return;
-        
+
         const chats = await whatsappClient.getChats();
         const chat = chats.find(c => c.id._serialized === groupId);
-        
+
         if (chat) {
-            const confirmMessage = 
-                '🎉 *Pembayaran Berhasil - Bot Aktif!*\n\n' +
-                `**Order ID:** ${orderId}\n` +
-                `**Durasi:** ${duration} hari\n` +
-                `**Harga:** Rp ${parseInt(amount).toLocaleString('id-ID')}\n` +
-                `**Aktif hingga:** ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
-                '✅ *Fitur yang Aktif:*\n' +
-                '• 📢 Notifikasi Hell Event otomatis\n' +
-                '• 📅 Info Monster Rotation harian\n' +
-                '• 🤖 AI Assistant\n' +
-                '• 👥 Tag All Members\n' +
-                '• 🛡️ Anti-spam Protection\n\n' +
-                '🚀 *Bot siap digunakan!*\n' +
-                'Ketik `!help` untuk melihat semua command.\n\n' +
-                '📱 *Support:* 0822-1121-9993 (Angga)\n' +
-                'Terima kasih telah menggunakan Bot Lords Mobile! 🎮';
-            
+            let confirmMessage;
+
+            if (isExtension) {
+                confirmMessage =
+                    '🎉 *Pembayaran Berhasil - Sewa Diperpanjang!*\n\n' +
+                    `**Order ID:** ${orderId}\n` +
+                    `**Durasi Tambahan:** ${duration} hari\n` +
+                    `**Harga:** Rp ${parseInt(amount).toLocaleString('id-ID')}\n` +
+                    `**Aktif hingga:** ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
+                    '✅ *Sewa berhasil diperpanjang!*\n' +
+                    'Bot akan tetap aktif dengan semua fitur:\n' +
+                    '• 📢 Notifikasi Hell Event otomatis\n' +
+                    '• 📅 Info Monster Rotation harian\n' +
+                    '• 🤖 AI Assistant\n' +
+                    '• 👥 Tag All Members\n' +
+                    '• 🛡️ Anti-spam Protection\n\n' +
+                    '🚀 *Bot tetap siap digunakan!*\n' +
+                    'Ketik `!help` untuk melihat semua command.\n\n' +
+                    '📱 *Support:* 0822-1121-9993 (Angga)\n' +
+                    'Terima kasih telah memperpanjang sewa Bot Lords Mobile! 🎮';
+            } else {
+                confirmMessage =
+                    '🎉 *Pembayaran Berhasil - Bot Aktif!*\n\n' +
+                    `**Order ID:** ${orderId}\n` +
+                    `**Durasi:** ${duration} hari\n` +
+                    `**Harga:** Rp ${parseInt(amount).toLocaleString('id-ID')}\n` +
+                    `**Aktif hingga:** ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
+                    '✅ *Fitur yang Aktif:*\n' +
+                    '• 📢 Notifikasi Hell Event otomatis\n' +
+                    '• 📅 Info Monster Rotation harian\n' +
+                    '• 🤖 AI Assistant\n' +
+                    '• 👥 Tag All Members\n' +
+                    '• 🛡️ Anti-spam Protection\n\n' +
+                    '🚀 *Bot siap digunakan!*\n' +
+                    'Ketik `!help` untuk melihat semua command.\n\n' +
+                    '📱 *Support:* 0822-1121-9993 (Angga)\n' +
+                    'Terima kasih telah menggunakan Bot Lords Mobile! 🎮';
+            }
+
             await chat.sendMessage(confirmMessage);
-            console.log(`Payment confirmation sent to group: ${groupId}`);
+            console.log(`Payment confirmation sent to group: ${groupId} (${isExtension ? 'extension' : 'new activation'})`);
         }
-        
+
     } catch (error) {
         console.error('Error sending payment confirmation to group:', error);
     }
 }
 
 // Send confirmation to owner
-async function sendOwnerConfirmation(ownerContactId, orderId, duration, amount, expiryDate) {
+async function sendOwnerConfirmation(ownerContactId, orderId, duration, amount, expiryDate, isExtension = false) {
     try {
         if (!whatsappClient) return;
-        
-        const ownerMessage = 
-            '✅ *Pembayaran Berhasil Dikonfirmasi*\n\n' +
+
+        let ownerMessage;
+
+        if (isExtension) {
+            ownerMessage =
+                '✅ *Sewa Bot Berhasil Diperpanjang*\n\n' +
+                `**Order ID:** ${orderId}\n` +
+                `**Durasi Tambahan:** ${duration} hari\n` +
+                `**Harga:** Rp ${parseInt(amount).toLocaleString('id-ID')}\n` +
+                `**Aktif hingga:** ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
+                '🎉 *Sewa bot berhasil diperpanjang!*\n\n' +
+                '📧 *Bukti Pembayaran:*\n' +
+                'Simpan Order ID ini sebagai bukti pembayaran.\n\n' +
+                '🔔 *Notifikasi Perpanjangan:*\n' +
+                'Kami akan mengingatkan Anda 3 hari sebelum masa aktif berakhir.\n\n' +
+                '📱 *Support & Bantuan:*\n' +
+                '0822-1121-9993 (Angga)\n\n' +
+                'Terima kasih telah memperpanjang layanan kami! 🙏';
+        } else {
+            ownerMessage =
+                '✅ *Pembayaran Berhasil Dikonfirmasi*\n\n' +
+                `**Order ID:** ${orderId}\n` +
+                `**Durasi:** ${duration} hari\n` +
+                `**Harga:** Rp ${parseInt(amount).toLocaleString('id-ID')}\n` +
+                `**Aktif hingga:** ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
+                '🎉 *Bot telah aktif di grup Anda!*\n\n' +
+                '📧 *Bukti Pembayaran:*\n' +
+                'Simpan Order ID ini sebagai bukti pembayaran.\n\n' +
+                '🔔 *Notifikasi Perpanjangan:*\n' +
+                'Kami akan mengingatkan Anda 3 hari sebelum masa aktif berakhir.\n\n' +
+                '📱 *Support & Bantuan:*\n' +
+                '0822-1121-9993 (Angga)\n\n' +
+                'Terima kasih telah mempercayai layanan kami! 🙏';
+        }
+
+        await whatsappClient.sendMessage(ownerContactId, ownerMessage);
+        console.log(`Owner confirmation sent to: ${ownerContactId} (${isExtension ? 'extension' : 'new activation'})`);
+
+    } catch (error) {
+        console.error('Error sending owner confirmation:', error);
+    }
+}
+
+// Get stored payment data from file
+async function getStoredPaymentData(orderId) {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const paymentDataFile = path.join(__dirname, '..', 'data', 'payment_data.json');
+
+        if (fs.existsSync(paymentDataFile)) {
+            const data = JSON.parse(fs.readFileSync(paymentDataFile, 'utf8'));
+            return data[orderId] || null;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error reading stored payment data:', error);
+        return null;
+    }
+}
+
+// Store payment data when creating payment
+async function storePaymentData(orderId, paymentData) {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const paymentDataFile = path.join(__dirname, '..', 'data', 'payment_data.json');
+
+        let data = {};
+        if (fs.existsSync(paymentDataFile)) {
+            data = JSON.parse(fs.readFileSync(paymentDataFile, 'utf8'));
+        }
+
+        data[orderId] = {
+            ...paymentData,
+            createdAt: new Date().toISOString()
+        };
+
+        // Ensure data directory exists
+        const dataDir = path.dirname(paymentDataFile);
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
+
+        fs.writeFileSync(paymentDataFile, JSON.stringify(data, null, 2));
+        console.log('✅ Payment data stored for order:', orderId);
+        return true;
+    } catch (error) {
+        console.error('Error storing payment data:', error);
+        return false;
+    }
+}
+
+// Get owner info from group participants
+async function getOwnerInfoFromGroup(groupId, orderId) {
+    try {
+        if (!whatsappClient) return null;
+
+        const chats = await whatsappClient.getChats();
+        const chat = chats.find(c => c.id._serialized === groupId);
+
+        if (!chat || !chat.isGroup) return null;
+
+        // Get participants
+        const participants = await chat.getParticipants();
+        console.log(`Found ${participants.length} participants in group`);
+
+        // Look for admins first (more likely to be the payer)
+        const admins = participants.filter(p => p.isAdmin || p.isSuperAdmin);
+        console.log(`Found ${admins.length} admins in group`);
+
+        // Try to get contact info for admins
+        for (const admin of admins) {
+            try {
+                const contact = await whatsappClient.getContactById(admin.id._serialized);
+                if (contact && contact.pushname && contact.pushname !== 'Unknown') {
+                    return {
+                        name: contact.pushname || contact.number,
+                        number: contact.number,
+                        id: contact.id._serialized
+                    };
+                }
+            } catch (error) {
+                console.error('Error getting admin contact:', error);
+                continue;
+            }
+        }
+
+        // If no admin found, try first few participants
+        for (let i = 0; i < Math.min(3, participants.length); i++) {
+            try {
+                const participant = participants[i];
+                const contact = await whatsappClient.getContactById(participant.id._serialized);
+                if (contact && contact.pushname && contact.pushname !== 'Unknown') {
+                    return {
+                        name: contact.pushname || contact.number,
+                        number: contact.number,
+                        id: contact.id._serialized
+                    };
+                }
+            } catch (error) {
+                console.error('Error getting participant contact:', error);
+                continue;
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error getting owner info from group:', error);
+        return null;
+    }
+}
+
+// Send notification to BOT_OWNER about successful payment
+async function sendBotOwnerNotification(groupId, orderId, duration, amount, expiryDate, isExtension, ownerInfo) {
+    try {
+        const botOwnerNumber = process.env.BOT_OWNER_NUMBER;
+        if (!whatsappClient || !botOwnerNumber) return;
+
+        const botOwnerContactId = `${botOwnerNumber}@c.us`;
+
+        // Get group name
+        let groupName = 'Unknown Group';
+        try {
+            const chats = await whatsappClient.getChats();
+            const chat = chats.find(c => c.id._serialized === groupId);
+            if (chat) {
+                groupName = chat.name;
+            }
+        } catch (error) {
+            console.error('Error getting group name for BOT_OWNER notification:', error);
+        }
+
+        const notificationMessage =
+            '💰 *Pembayaran Berhasil Diterima*\n\n' +
             `**Order ID:** ${orderId}\n` +
+            `**Grup:** ${groupName}\n` +
+            `**Group ID:** ${groupId}\n` +
+            `**Tipe:** ${isExtension ? 'Perpanjangan' : 'Aktivasi Baru'}\n` +
             `**Durasi:** ${duration} hari\n` +
             `**Harga:** Rp ${parseInt(amount).toLocaleString('id-ID')}\n` +
             `**Aktif hingga:** ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
-            '🎉 *Bot telah aktif di grup Anda!*\n\n' +
-            '📧 *Bukti Pembayaran:*\n' +
-            'Simpan Order ID ini sebagai bukti pembayaran.\n\n' +
-            '🔔 *Notifikasi Perpanjangan:*\n' +
-            'Kami akan mengingatkan Anda 3 hari sebelum masa aktif berakhir.\n\n' +
-            '📱 *Support & Bantuan:*\n' +
-            '0822-1121-9993 (Angga)\n\n' +
-            'Terima kasih telah mempercayai layanan kami! 🙏';
-        
-        await whatsappClient.sendMessage(ownerContactId, ownerMessage);
-        console.log(`Owner confirmation sent to: ${ownerContactId}`);
-        
+            '👤 *Info Pembeli:*\n' +
+            `• Nama: ${ownerInfo.name}\n` +
+            `• Nomor: ${ownerInfo.number}\n` +
+            `• ID: ${ownerInfo.id}\n\n` +
+            `✅ *Status:* Bot ${isExtension ? 'diperpanjang' : 'diaktifkan'} otomatis\n\n` +
+            '📊 *Dashboard:* Gunakan `!grouprent` untuk melihat semua grup';
+
+        await whatsappClient.sendMessage(botOwnerContactId, notificationMessage);
+        console.log(`BOT_OWNER notification sent for order: ${orderId}`);
+
     } catch (error) {
-        console.error('Error sending owner confirmation:', error);
+        console.error('Error sending BOT_OWNER notification:', error);
+    }
+}
+
+// Send notification to BOT_OWNER about failed activation
+async function sendBotOwnerFailureNotification(groupId, orderId, duration, amount, ownerInfo) {
+    try {
+        const botOwnerNumber = process.env.BOT_OWNER_NUMBER;
+        if (!whatsappClient || !botOwnerNumber) return;
+
+        const botOwnerContactId = `${botOwnerNumber}@c.us`;
+
+        // Get group name
+        let groupName = 'Unknown Group';
+        try {
+            const chats = await whatsappClient.getChats();
+            const chat = chats.find(c => c.id._serialized === groupId);
+            if (chat) {
+                groupName = chat.name;
+            }
+        } catch (error) {
+            console.error('Error getting group name for failure notification:', error);
+        }
+
+        const failureMessage =
+            '⚠️ *Pembayaran Berhasil Tapi Bot Tidak Aktif*\n\n' +
+            `**Order ID:** ${orderId}\n` +
+            `**Grup:** ${groupName}\n` +
+            `**Group ID:** ${groupId}\n` +
+            `**Durasi:** ${duration} hari\n` +
+            `**Harga:** Rp ${parseInt(amount).toLocaleString('id-ID')}\n\n` +
+            '👤 *Info Pembeli:*\n' +
+            `• Nama: ${ownerInfo.name}\n` +
+            `• Nomor: ${ownerInfo.number}\n` +
+            `• ID: ${ownerInfo.id}\n\n` +
+            '❌ *Masalah:* Bot gagal diaktifkan otomatis\n' +
+            '🔧 *Tindakan:* Perlu aktivasi manual\n\n' +
+            '💡 *Solusi:*\n' +
+            '• Gunakan `!activate` di grup tersebut\n' +
+            '• Atau hubungi customer untuk konfirmasi';
+
+        await whatsappClient.sendMessage(botOwnerContactId, failureMessage);
+        console.log(`BOT_OWNER failure notification sent for order: ${orderId}`);
+
+    } catch (error) {
+        console.error('Error sending BOT_OWNER failure notification:', error);
+    }
+}
+
+// Send error notification to BOT_OWNER
+async function sendBotOwnerErrorNotification(orderId, groupId, errorMessage) {
+    try {
+        const botOwnerNumber = process.env.BOT_OWNER_NUMBER;
+        if (!whatsappClient || !botOwnerNumber) return;
+
+        const botOwnerContactId = `${botOwnerNumber}@c.us`;
+
+        const errorNotification =
+            '🚨 *Error Saat Memproses Pembayaran*\n\n' +
+            `**Order ID:** ${orderId}\n` +
+            `**Group ID:** ${groupId}\n` +
+            `**Error:** ${errorMessage}\n\n` +
+            '⚠️ *Perlu penanganan manual*\n' +
+            'Periksa log server untuk detail lebih lanjut.';
+
+        await whatsappClient.sendMessage(botOwnerContactId, errorNotification);
+        console.log(`BOT_OWNER error notification sent for order: ${orderId}`);
+
+    } catch (error) {
+        console.error('Error sending BOT_OWNER error notification:', error);
     }
 }
 

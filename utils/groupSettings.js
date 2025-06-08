@@ -195,17 +195,66 @@ function isBotOwner(contact) {
 
 // Set rent mode for a group
 function setRentMode(groupId, enabled, expiryDate = null, ownerInfo = null, duration = null, price = null, paymentId = null) {
-    const updateData = {
-        rentMode: enabled,
-        rentExpiry: expiryDate ? expiryDate.toISOString() : null,
-        rentActivatedAt: enabled ? new Date().toISOString() : null,
-        rentOwner: enabled ? ownerInfo : null,
-        rentDuration: enabled ? duration : null,
-        rentPrice: enabled ? price : null,
-        paymentId: enabled ? paymentId : null
-    };
+    try {
+        const updateData = {
+            rentMode: enabled,
+            rentExpiry: expiryDate && expiryDate instanceof Date && !isNaN(expiryDate.getTime()) ? expiryDate.toISOString() : null,
+            rentActivatedAt: enabled ? new Date().toISOString() : null,
+            rentOwner: enabled ? ownerInfo : null,
+            rentDuration: enabled ? duration : null,
+            rentPrice: enabled ? price : null,
+            paymentId: enabled ? paymentId : null
+        };
 
-    return updateGroupSettings(groupId, updateData);
+        return updateGroupSettings(groupId, updateData);
+    } catch (error) {
+        console.error('Error in setRentMode:', error);
+        return false;
+    }
+}
+
+// Extend rent mode for a group (add duration to existing expiry)
+function extendRentMode(groupId, additionalDays, ownerInfo = null, price = null, paymentId = null) {
+    try {
+        const settings = getGroupSettings(groupId);
+
+        let newExpiryDate;
+        if (settings.rentMode && settings.rentExpiry) {
+            // If already in rent mode, extend from current expiry
+            const currentExpiry = new Date(settings.rentExpiry);
+            if (!isNaN(currentExpiry.getTime())) {
+                newExpiryDate = new Date(currentExpiry);
+                newExpiryDate.setDate(newExpiryDate.getDate() + additionalDays);
+            } else {
+                // If current expiry is invalid, start from now
+                newExpiryDate = new Date();
+                newExpiryDate.setDate(newExpiryDate.getDate() + additionalDays);
+            }
+        } else {
+            // If not in rent mode, start from now
+            newExpiryDate = new Date();
+            newExpiryDate.setDate(newExpiryDate.getDate() + additionalDays);
+        }
+
+        // Set to end of day
+        newExpiryDate.setHours(23, 59, 59, 999);
+
+        const updateData = {
+            rentMode: true,
+            rentExpiry: newExpiryDate.toISOString(),
+            rentActivatedAt: settings.rentActivatedAt || new Date().toISOString(),
+            rentOwner: ownerInfo || settings.rentOwner,
+            rentDuration: additionalDays,
+            rentPrice: price || settings.rentPrice,
+            paymentId: paymentId || settings.paymentId
+        };
+
+        console.log(`Extending rent for group ${groupId}: +${additionalDays} days, new expiry: ${newExpiryDate.toISOString()}`);
+        return updateGroupSettings(groupId, updateData);
+    } catch (error) {
+        console.error('Error in extendRentMode:', error);
+        return false;
+    }
 }
 
 // Check if rent is active and not expired
@@ -320,6 +369,7 @@ module.exports = {
     isBotEnabled,
     isBotOwner,
     setRentMode,
+    extendRentMode,
     isRentActive,
     getRentStatus,
     isBotActiveInGroup,

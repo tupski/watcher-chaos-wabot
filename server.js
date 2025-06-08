@@ -17,7 +17,15 @@ app.use('/payment/webhook', express.raw({ type: 'application/json' }), (req, res
     req.rawBody = req.body;
     // Parse JSON for processing
     try {
-        req.body = JSON.parse(req.body.toString());
+        if (Buffer.isBuffer(req.body)) {
+            req.body = JSON.parse(req.body.toString());
+        } else if (typeof req.body === 'string') {
+            req.body = JSON.parse(req.body);
+        } else if (typeof req.body === 'object' && req.body !== null) {
+            // Already parsed, keep as is
+        } else {
+            throw new Error('Invalid body type');
+        }
     } catch (error) {
         console.error('Error parsing webhook JSON:', error);
         return res.status(400).json({ error: 'Invalid JSON' });
