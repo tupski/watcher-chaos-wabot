@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const antiSpamLink = require('../middleware/antiSpamLink');
-const { canExecuteCommand } = require('../utils/groupSettings');
+const { canExecuteCommand, isBotEnabled } = require('../utils/groupSettings');
+const { isGroupChat } = require('../utils/chatUtils');
 
 /**
  * Handles incoming messages from WhatsApp.
@@ -39,6 +40,17 @@ module.exports = async (client, message) => {
     const commandName = message.body.split(' ')[0].substring(1).toLowerCase();
     console.log('Command name extracted:', commandName);
 
+    // Check if bot is enabled in this group (except for enablebot command)
+    const chat = await message.getChat();
+    if (isGroupChat(chat) && commandName !== 'enablebot') {
+        const groupId = chat.id._serialized;
+        if (!isBotEnabled(groupId)) {
+            console.log(`Bot is disabled in group ${groupId}, ignoring command: ${commandName}`);
+            // Silently ignore commands when bot is disabled (except enablebot)
+            return;
+        }
+    }
+
     // Check command permissions
     const hasPermission = await canExecuteCommand(message, commandName, client);
     if (!hasPermission) {
@@ -55,7 +67,10 @@ module.exports = async (client, message) => {
         'ai': 'ai.js',
         'help': 'help.js',
         'cmd': 'cmd.js',
-        'debug': 'debug.js'
+        'debug': 'debug.js',
+        'permission': 'permission.js',
+        'enablebot': 'enablebot.js',
+        'disablebot': 'disablebot.js'
     };
 
     // Get the actual command file

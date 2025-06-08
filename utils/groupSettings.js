@@ -8,13 +8,17 @@ const settingsFile = path.join(__dirname, '..', 'data', 'groupSettings.json');
 // Default settings for new groups
 const defaultSettings = {
     hellNotifications: 'all', // 'all', 'watcherchaos', 'off'
+    botEnabled: true, // true = bot aktif, false = bot nonaktif
     commandPermissions: {
         hell: 'all',     // 'all', 'admin'
         monster: 'all',
         tagall: 'all',
         ping: 'all',
         ai: 'all',
-        help: 'all'
+        help: 'all',
+        cmd: 'admin',
+        debug: 'admin',
+        permission: 'admin'
     }
 };
 
@@ -143,18 +147,40 @@ async function canExecuteCommand(message, command, client = null) {
 function shouldReceiveHellNotifications(groupId, eventType = 'all') {
     const settings = getGroupSettings(groupId);
     const preference = settings.hellNotifications;
-    
+
     if (preference === 'off') {
         return false;
     }
-    
+
     if (preference === 'watcherchaos') {
         // Only send if it's a Watcher or Chaos Dragon event
         return eventType === 'watcher' || eventType === 'chaos';
     }
-    
+
     // preference === 'all'
     return true;
+}
+
+// Set bot enabled/disabled status for a group
+function setBotEnabled(groupId, enabled) {
+    return updateGroupSettings(groupId, { botEnabled: enabled });
+}
+
+// Check if bot is enabled in a group
+function isBotEnabled(groupId) {
+    const settings = getGroupSettings(groupId);
+    return settings.botEnabled !== false; // Default to true if not set
+}
+
+// Check if user is bot owner
+function isBotOwner(contact) {
+    const botOwnerNumber = process.env.BOT_OWNER_NUMBER;
+    if (!botOwnerNumber) {
+        return false;
+    }
+
+    // Check if contact number contains bot owner number
+    return contact.number && contact.number.includes(botOwnerNumber);
 }
 
 module.exports = {
@@ -164,5 +190,8 @@ module.exports = {
     setCommandPermission,
     canExecuteCommand,
     shouldReceiveHellNotifications,
+    setBotEnabled,
+    isBotEnabled,
+    isBotOwner,
     defaultSettings
 };

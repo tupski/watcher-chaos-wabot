@@ -26,13 +26,20 @@ module.exports = async (client, message) => {
 *⚙️ Admin Commands:*
 • \`!cmd <command> <admin/all>\` - Set command permissions
   Example: \`!cmd hell admin\` (only admins can use !hell)
+• \`!permission\` - View all command permissions and bot settings
+• \`!debug\` - Show bot diagnostic information
 • \`!help\` - Show this help message
+
+*🔧 Bot Owner Commands:*
+• \`!enablebot\` - Activate bot in this group (BOT_OWNER only)
+• \`!disablebot\` - Deactivate bot in this group (BOT_OWNER only)
 
 *🔧 Permission System:*
 • Most commands can be used by all members by default
 • Admins can restrict commands using \`!cmd\`
 • Hell notification settings are per-group
 • Only admins can change Hell notifications and command permissions
+• BOT_OWNER has full control over bot activation/deactivation
 
 *📱 Features:*
 • Automatic Hell Event notifications from Discord

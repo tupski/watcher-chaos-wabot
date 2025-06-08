@@ -1,5 +1,6 @@
 const moment = require('moment');
 const cron = require('node-cron');
+const { isBotEnabled } = require('../utils/groupSettings');
 
 // Monster rotation schedule (same as in monster.js)
 const monsterSchedule = [
@@ -60,6 +61,12 @@ function startMonsterResetScheduler(whatsappClient) {
                 const chats = await whatsappClient.getChats();
                 
                 for (const groupId of whatsappGroupIds) {
+                    // Check if bot is enabled in this group
+                    if (!isBotEnabled(groupId.trim())) {
+                        console.log(`Skipping monster reset for group ${groupId} - bot is disabled`);
+                        continue;
+                    }
+
                     const chat = chats.find(c => c.id._serialized === groupId.trim());
                     if (chat) {
                         await chat.sendMessage(resetMessage);
