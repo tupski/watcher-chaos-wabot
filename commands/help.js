@@ -33,6 +33,11 @@ module.exports = async (client, message) => {
 *🔧 Bot Owner Commands:*
 • \`!enablebot\` - Activate bot in this group (BOT_OWNER only)
 • \`!disablebot\` - Deactivate bot in this group (BOT_OWNER only)
+• \`!rent <option>\` - Manage bot rental (BOT_OWNER only)
+  - \`!rent DDMMYYYY\` - Set expiry date (e.g., !rent 08072025)
+  - \`!rent 30d\` - Set 30 days from now
+  - \`!rent disable\` - Disable rental mode
+  - \`!rent status\` - Check rental status (Admin can use)
 
 *🔧 Permission System:*
 • Most commands can be used by all members by default

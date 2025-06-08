@@ -18,6 +18,7 @@ if (!fs.existsSync(dataDir)) {
 const hellEventHandler = require('./commands/hell');
 const messageHandler = require('./handlers/messageHandler');
 const { startMonsterResetScheduler } = require('./handlers/monsterResetHandler');
+const { startRentExpiryScheduler } = require('./handlers/rentExpiryHandler');
 
 // Set the WhatsApp client for API routes (will be updated when client is ready)
 setWhatsAppClient(null);
@@ -71,6 +72,9 @@ whatsappClient.on('ready', () => {
 
     // Start monster reset scheduler
     startMonsterResetScheduler(whatsappClient);
+
+    // Start rent expiry scheduler
+    startRentExpiryScheduler(whatsappClient);
 
     // Notify web clients that WhatsApp is connected
     io.emit('whatsapp-connected');

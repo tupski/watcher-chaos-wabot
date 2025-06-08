@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const antiSpamLink = require('../middleware/antiSpamLink');
-const { canExecuteCommand, isBotEnabled } = require('../utils/groupSettings');
+const { canExecuteCommand, isBotActiveInGroup } = require('../utils/groupSettings');
 const { isGroupChat } = require('../utils/chatUtils');
 
 /**
@@ -40,13 +40,28 @@ module.exports = async (client, message) => {
     const commandName = message.body.split(' ')[0].substring(1).toLowerCase();
     console.log('Command name extracted:', commandName);
 
-    // Check if bot is enabled in this group (except for enablebot command)
+    // Check if bot is active in this group (considering both normal enable and rent)
     const chat = await message.getChat();
-    if (isGroupChat(chat) && commandName !== 'enablebot') {
+    if (isGroupChat(chat) && !['enablebot', 'rent'].includes(commandName)) {
         const groupId = chat.id._serialized;
-        if (!isBotEnabled(groupId)) {
-            console.log(`Bot is disabled in group ${groupId}, ignoring command: ${commandName}`);
-            // Silently ignore commands when bot is disabled (except enablebot)
+        if (!isBotActiveInGroup(groupId)) {
+            console.log(`Bot is not active in group ${groupId}, showing promo message for command: ${commandName}`);
+
+            // Send promo message when bot is inactive
+            const promoMessage =
+                '🎉 *Promo!*\n' +
+                'Sewa Bot Lords Mobile cuma *30ribu/bulan!*\n\n' +
+                '📞 *Hubungi:*\n' +
+                '0822-1121-9993 (Angga)\n\n' +
+                '✨ *Fitur Bot:*\n' +
+                '• Notifikasi Hell Event otomatis\n' +
+                '• Info Monster Rotation harian\n' +
+                '• AI Assistant\n' +
+                '• Tag All Members\n' +
+                '• Anti-spam Protection\n\n' +
+                '💰 *Harga Terjangkau - Fitur Lengkap!*';
+
+            await message.reply(promoMessage);
             return;
         }
     }
@@ -70,7 +85,8 @@ module.exports = async (client, message) => {
         'debug': 'debug.js',
         'permission': 'permission.js',
         'enablebot': 'enablebot.js',
-        'disablebot': 'disablebot.js'
+        'disablebot': 'disablebot.js',
+        'rent': 'rent.js'
     };
 
     // Get the actual command file

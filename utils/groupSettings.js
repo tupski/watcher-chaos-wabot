@@ -9,6 +9,9 @@ const settingsFile = path.join(__dirname, '..', 'data', 'groupSettings.json');
 const defaultSettings = {
     hellNotifications: 'all', // 'all', 'watcherchaos', 'off'
     botEnabled: true, // true = bot aktif, false = bot nonaktif
+    rentMode: false, // true = mode sewa, false = mode normal
+    rentExpiry: null, // tanggal kadaluarsa sewa (ISO string)
+    rentActivatedAt: null, // tanggal aktivasi sewa (ISO string)
     commandPermissions: {
         hell: 'all',     // 'all', 'admin'
         monster: 'all',
@@ -18,7 +21,8 @@ const defaultSettings = {
         help: 'all',
         cmd: 'admin',
         debug: 'admin',
-        permission: 'admin'
+        permission: 'admin',
+        rent: 'admin'
     }
 };
 
@@ -183,6 +187,56 @@ function isBotOwner(contact) {
     return contact.number && contact.number.includes(botOwnerNumber);
 }
 
+// Set rent mode for a group
+function setRentMode(groupId, enabled, expiryDate = null) {
+    const updateData = {
+        rentMode: enabled,
+        rentExpiry: expiryDate ? expiryDate.toISOString() : null,
+        rentActivatedAt: enabled ? new Date().toISOString() : null
+    };
+
+    return updateGroupSettings(groupId, updateData);
+}
+
+// Check if rent is active and not expired
+function isRentActive(groupId) {
+    const settings = getGroupSettings(groupId);
+
+    if (!settings.rentMode || !settings.rentExpiry) {
+        return false;
+    }
+
+    const now = new Date();
+    const expiry = new Date(settings.rentExpiry);
+
+    return now < expiry;
+}
+
+// Get rent status info
+function getRentStatus(groupId) {
+    const settings = getGroupSettings(groupId);
+
+    return {
+        rentMode: settings.rentMode || false,
+        rentExpiry: settings.rentExpiry ? new Date(settings.rentExpiry) : null,
+        rentActivatedAt: settings.rentActivatedAt ? new Date(settings.rentActivatedAt) : null,
+        isActive: isRentActive(groupId)
+    };
+}
+
+// Check if bot should be active (considering both normal enable and rent)
+function isBotActiveInGroup(groupId) {
+    const settings = getGroupSettings(groupId);
+
+    // If rent mode is enabled, check rent expiry
+    if (settings.rentMode) {
+        return isRentActive(groupId);
+    }
+
+    // Otherwise, check normal bot enabled status
+    return settings.botEnabled !== false;
+}
+
 module.exports = {
     getGroupSettings,
     updateGroupSettings,
@@ -193,5 +247,9 @@ module.exports = {
     setBotEnabled,
     isBotEnabled,
     isBotOwner,
+    setRentMode,
+    isRentActive,
+    getRentStatus,
+    isBotActiveInGroup,
     defaultSettings
 };

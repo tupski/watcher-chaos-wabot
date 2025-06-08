@@ -1,5 +1,5 @@
 const { getChatInfo } = require('../utils/chatUtils');
-const { getGroupSettings } = require('../utils/groupSettings');
+const { getGroupSettings, getRentStatus } = require('../utils/groupSettings');
 
 /**
  * Command untuk melihat permission semua command dan pesan otomatis
@@ -21,12 +21,27 @@ module.exports = async (client, message) => {
         
         const groupId = chatInfo.chat.id._serialized;
         const settings = getGroupSettings(groupId);
-        
+        const rentStatus = getRentStatus(groupId);
+
         let permissionInfo = '🔐 *Permission Command & Pesan Otomatis*\n\n';
-        
+
         // Bot Status
         permissionInfo += '**Status Bot:**\n';
-        permissionInfo += `• Bot Status: ${settings.botEnabled !== false ? '🟢 Aktif' : '🔴 Nonaktif'}\n\n`;
+        if (rentStatus.rentMode) {
+            if (rentStatus.isActive) {
+                const now = new Date();
+                const timeLeft = rentStatus.rentExpiry - now;
+                const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+                permissionInfo += `• Bot Status: 🟢 Aktif (Mode Sewa)\n`;
+                permissionInfo += `• Masa Aktif: ${daysLeft} hari lagi\n`;
+                permissionInfo += `• Kadaluarsa: ${rentStatus.rentExpiry.toLocaleDateString('id-ID')}\n\n`;
+            } else {
+                permissionInfo += `• Bot Status: 🔴 Nonaktif (Sewa Kadaluarsa)\n`;
+                permissionInfo += `• Kadaluarsa: ${rentStatus.rentExpiry.toLocaleDateString('id-ID')}\n\n`;
+            }
+        } else {
+            permissionInfo += `• Bot Status: ${settings.botEnabled !== false ? '🟢 Aktif (Mode Normal)' : '🔴 Nonaktif'}\n\n`;
+        }
         
         // Command Permissions
         permissionInfo += '**Permission Command:**\n';
@@ -39,7 +54,8 @@ module.exports = async (client, message) => {
             { name: 'help', desc: 'Bantuan command' },
             { name: 'cmd', desc: 'Ubah permission command' },
             { name: 'debug', desc: 'Diagnostik bot' },
-            { name: 'permission', desc: 'Lihat permission (command ini)' }
+            { name: 'permission', desc: 'Lihat permission (command ini)' },
+            { name: 'rent', desc: 'Kelola sewa bot (BOT_OWNER)' }
         ];
         
         commands.forEach(cmd => {
@@ -113,6 +129,8 @@ module.exports = async (client, message) => {
         permissionInfo += '**Command Kontrol Bot:**\n';
         permissionInfo += '• `!enablebot` - Aktifkan bot (BOT_OWNER only)\n';
         permissionInfo += '• `!disablebot` - Nonaktifkan bot (BOT_OWNER only)\n';
+        permissionInfo += '• `!rent <option>` - Kelola sewa bot (BOT_OWNER only)\n';
+        permissionInfo += '• `!rent status` - Cek status sewa (Admin)\n';
         permissionInfo += '• `!cmd <command> <admin/all>` - Ubah permission (Admin)\n';
         permissionInfo += '• `!hell <on/off/watcherchaos>` - Setting notifikasi (Admin)\n\n';
         

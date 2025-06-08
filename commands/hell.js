@@ -23,7 +23,7 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
  * If an event is detected, it calculates the time remaining and formats a message to be sent to WhatsApp groups.
  * It handles errors during message processing and logs any issues encountered.
  */
-const { shouldReceiveHellNotifications, isBotEnabled } = require('../utils/groupSettings');
+const { shouldReceiveHellNotifications, isBotActiveInGroup } = require('../utils/groupSettings');
 
 module.exports = async (whatsappClient, message) => {
     const whatsappGroupIds = process.env.WHATSAPP_GROUP_IDS ? process.env.WHATSAPP_GROUP_IDS.split(',') : [];
@@ -486,9 +486,9 @@ module.exports = async (whatsappClient, message) => {
             if (whatsappGroupIds.length > 0) {
                 for (const groupId of whatsappGroupIds) {
                     try {
-                        // Check if bot is enabled in this group
-                        if (!isBotEnabled(groupId.trim())) {
-                            console.log(`Skipping group ${groupId} - bot is disabled`);
+                        // Check if bot is active in this group (considering both normal enable and rent)
+                        if (!isBotActiveInGroup(groupId.trim())) {
+                            console.log(`Skipping group ${groupId} - bot is not active`);
                             continue;
                         }
 
