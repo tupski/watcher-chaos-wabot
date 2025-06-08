@@ -41,7 +41,7 @@ console.log('\n2. Checking Command Files:');
 const fs = require('fs');
 const path = require('path');
 
-const commandFiles = ['tagall.js', 'hell.js', 'ping.js'];
+const commandFiles = ['tagall.js', 'hell.js', 'ping.js', 'monster.js'];
 commandFiles.forEach(file => {
     const filePath = path.join(__dirname, 'commands', file);
     if (fs.existsSync(filePath)) {
@@ -56,6 +56,18 @@ console.log('\n3. Checking Middleware Files:');
 const middlewareFiles = ['antiSpamLink.js'];
 middlewareFiles.forEach(file => {
     const filePath = path.join(__dirname, 'middleware', file);
+    if (fs.existsSync(filePath)) {
+        console.log(`   ✅ ${file}: Found`);
+    } else {
+        console.log(`   ❌ ${file}: Missing`);
+    }
+});
+
+// Test 3.5: Handler Files
+console.log('\n3.5. Checking Handler Files:');
+const handlerFiles = ['messageHandler.js', 'readyHandler.js', 'monsterResetHandler.js'];
+handlerFiles.forEach(file => {
+    const filePath = path.join(__dirname, 'handlers', file);
     if (fs.existsSync(filePath)) {
         console.log(`   ✅ ${file}: Found`);
     } else {
@@ -146,6 +158,8 @@ console.log('\n✅ Recent Fixes Applied:');
 console.log('   - Hell Event output format corrected (*Reward(s)*: value)');
 console.log('   - Hell Event time format: "Ended X hour/hours ago" when expired');
 console.log('   - Hell Event filter: ONLY_WATCHER_CHAOS setting added');
+console.log('   - Hell Event parsing: distinguish between rewards and tasks');
+console.log('   - Monster rotation system with daily reset notifications');
 console.log('   - Tagall command improved group detection');
 console.log('   - Anti-spam link enhanced with better regex and warning system');
 console.log('   - Ping command shows accurate latency');

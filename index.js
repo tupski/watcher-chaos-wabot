@@ -17,6 +17,7 @@ if (!fs.existsSync(dataDir)) {
 // Import command handlers
 const hellEventHandler = require('./commands/hell');
 const messageHandler = require('./handlers/messageHandler');
+const { startMonsterResetScheduler } = require('./handlers/monsterResetHandler');
 
 // Set the WhatsApp client for API routes (will be updated when client is ready)
 setWhatsAppClient(null);
@@ -67,6 +68,9 @@ whatsappClient.on('ready', () => {
     // Set the WhatsApp client for API routes
     setWhatsAppClient(whatsappClient);
     console.log('WhatsApp client set for API routes');
+
+    // Start monster reset scheduler
+    startMonsterResetScheduler(whatsappClient);
 
     // Notify web clients that WhatsApp is connected
     io.emit('whatsapp-connected');

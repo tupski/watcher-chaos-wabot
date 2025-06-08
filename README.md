@@ -29,10 +29,17 @@ Currently, the following feature is still under development:
 |-----------|------------------------------------------------|
 | **`!tagall`** | Tags all group members with an optional message. Usage: `!tagall [message]` |
 | **`!hell`** | Displays the ongoing Hell Event data. If no events are currently active, it will show the last event time. |
+| **`!monster`** | Shows today and tomorrow monster rotation. Usage: `!monster` or `!monster [monster_name]` |
 
 ### Anti Spam Link
 * This feature automatically blocks or prevents the spread of harmful, spammy, or unwanted links in WhatsApp groups.
 * Configure allowed links in the `ALLOWED_LINKS` environment variable (comma-separated).
+
+### Monster Rotation
+* Displays daily monster rotation schedule for Lords Mobile
+* Automatic notifications at 11:55 AM (GMT+7) when monsters reset
+* Search specific monsters to see when they will spawn
+* 12-day rotation cycle with monsters like Gargantua, Hardrox, Jade Wyrm, etc.
 ---
 
 ## 🛠️ Features & Output
