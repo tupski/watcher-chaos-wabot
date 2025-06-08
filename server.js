@@ -11,7 +11,21 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Middleware
+// Middleware for webhook raw body capture
+app.use('/payment/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+    // Store raw body for signature verification
+    req.rawBody = req.body;
+    // Parse JSON for processing
+    try {
+        req.body = JSON.parse(req.body.toString());
+    } catch (error) {
+        console.error('Error parsing webhook JSON:', error);
+        return res.status(400).json({ error: 'Invalid JSON' });
+    }
+    next();
+});
+
+// Regular middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 

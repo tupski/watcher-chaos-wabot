@@ -86,22 +86,36 @@ async function setTrialPeriod(groupId, groupName, client) {
             // Send message about trial already used
             try {
                 const chat = await client.getChatById(groupId);
-                    const noTrialMessage =
-                        '⚠️ *Trial Sudah Pernah Digunakan*\n\n' +
-                        'Grup ini sudah pernah menggunakan trial gratis sebelumnya.\n\n' +
-                        '💰 *Untuk menggunakan bot, silakan sewa:*\n' +
-                        '• 1 hari: Rp 2,000\n' +
-                        '• 1 minggu: Rp 12,000\n' +
-                        '• 1 bulan: Rp 50,000\n' +
-                        '• 6 bulan: Rp 500,000\n' +
-                        '• 1 tahun: Rp 950,000\n\n' +
-                        '📱 *Cara Pembayaran:*\n' +
-                        '• Ketik `!rent` untuk melihat paket\n' +
-                        '• Ketik `!rent pay [durasi]` untuk pembayaran otomatis\n' +
-                        '• Hubungi: 0822-1121-9993 untuk pembayaran manual\n\n' +
-                        '🔒 Bot akan tetap nonaktif sampai pembayaran berhasil.';
+                const { generatePromoMessage } = require('../utils/promoSettings');
+                const promoMessage = generatePromoMessage();
 
-                    await chat.sendMessage(noTrialMessage);
+                let noTrialMessage = '⚠️ *Trial Sudah Pernah Digunakan*\n\n';
+                noTrialMessage += 'Grup ini sudah pernah menggunakan trial gratis sebelumnya.\n\n';
+
+                // Add promo if active
+                if (promoMessage) {
+                    noTrialMessage += promoMessage;
+                }
+
+                noTrialMessage += '💰 *Untuk menggunakan bot, silakan sewa:*\n';
+                noTrialMessage += '• 1 hari: Rp 2,000\n';
+                noTrialMessage += '• 1 minggu: Rp 12,000\n';
+                noTrialMessage += '• 1 bulan: Rp 50,000\n';
+                noTrialMessage += '• 6 bulan: Rp 500,000\n';
+                noTrialMessage += '• 1 tahun: Rp 950,000\n\n';
+                noTrialMessage += '📱 *Cara Pembayaran:*\n';
+                noTrialMessage += '• Ketik `!rent` untuk melihat paket\n';
+                noTrialMessage += '• Ketik `!rent pay [durasi]` untuk pembayaran otomatis\n';
+
+                if (promoMessage) {
+                    noTrialMessage += '• Ketik `!rent pay promo` untuk gunakan promo\n';
+                }
+
+                noTrialMessage += '• Hubungi: 0822-1121-9993 untuk pembayaran manual\n\n';
+                noTrialMessage += '🔒 Bot akan tetap nonaktif sampai pembayaran berhasil.\n';
+                noTrialMessage += '💳 Powered by Xendit Payment Gateway';
+
+                await chat.sendMessage(noTrialMessage);
                 } catch (msgError) {
                     console.error('Error sending no trial message:', msgError);
                 }

@@ -49,33 +49,46 @@ module.exports = async (client, message) => {
             return;
         }
         
-        const paymentMessage = 
-            '💰 *Perpanjang Sewa Bot Lords Mobile*\n\n' +
-            '⏰ *Masa sewa bot telah berakhir*\n' +
-            'Bot saat ini dalam status NONAKTIF.\n\n' +
-            '🔄 *Untuk mengaktifkan kembali:*\n\n' +
-            '💳 *Pembayaran Otomatis (Rekomendasi):*\n' +
-            '• Ketik `!rent pay 1` - 1 hari (Rp 2,000)\n' +
-            '• Ketik `!rent pay 7` - 1 minggu (Rp 12,000)\n' +
-            '• Ketik `!rent pay 30` - 1 bulan (Rp 50,000)\n' +
-            '• Ketik `!rent pay 180` - 6 bulan (Rp 500,000)\n' +
-            '• Ketik `!rent pay 365` - 1 tahun (Rp 950,000)\n\n' +
-            '⚡ *Aktivasi instan setelah pembayaran!*\n\n' +
-            '🏦 *Pembayaran Manual:*\n' +
-            '• Ketik `!rent manual` untuk info rekening\n' +
-            '• Transfer + konfirmasi ke WhatsApp\n' +
-            '• Aktivasi dalam 1-24 jam\n\n' +
-            '📱 *Support & Bantuan:*\n' +
-            '• WhatsApp: 0822-1121-9993 (Angga)\n' +
-            '• Response time: < 1 jam\n' +
-            '• Layanan 24/7\n\n' +
-            '🎮 *Fitur yang akan aktif kembali:*\n' +
-            '• Notifikasi Hell Event otomatis\n' +
-            '• Info Monster Rotation harian\n' +
-            '• AI Assistant\n' +
-            '• Tag All Members\n' +
-            '• Anti-spam Protection\n\n' +
-            '💡 *Tips:* Gunakan pembayaran otomatis untuk aktivasi instan!';
+        const { generatePromoMessage } = require('../utils/promoSettings');
+        const promoMessage = generatePromoMessage();
+
+        let paymentMessage = '💰 *Perpanjang Sewa Bot Lords Mobile*\n\n';
+        paymentMessage += '⏰ *Masa sewa bot telah berakhir*\n';
+        paymentMessage += 'Bot saat ini dalam status NONAKTIF.\n\n';
+
+        // Add promo if active
+        if (promoMessage) {
+            paymentMessage += promoMessage;
+        }
+
+        paymentMessage += '🔄 *Untuk mengaktifkan kembali:*\n\n';
+        paymentMessage += '💳 *Pembayaran Otomatis (Rekomendasi):*\n';
+        paymentMessage += '• Ketik `!rent pay 1` - 1 hari (Rp 2,000)\n';
+        paymentMessage += '• Ketik `!rent pay 7` - 1 minggu (Rp 12,000)\n';
+        paymentMessage += '• Ketik `!rent pay 30` - 1 bulan (Rp 50,000)\n';
+        paymentMessage += '• Ketik `!rent pay 180` - 6 bulan (Rp 500,000)\n';
+        paymentMessage += '• Ketik `!rent pay 365` - 1 tahun (Rp 950,000)\n';
+
+        if (promoMessage) {
+            paymentMessage += '• Ketik `!rent pay promo` - Gunakan promo spesial\n';
+        }
+
+        paymentMessage += '\n⚡ *Aktivasi instan setelah pembayaran via Xendit!*\n\n';
+        paymentMessage += '🏦 *Pembayaran Manual:*\n';
+        paymentMessage += '• Ketik `!rent manual` untuk info rekening\n';
+        paymentMessage += '• Transfer + konfirmasi ke WhatsApp\n';
+        paymentMessage += '• Aktivasi dalam 1-24 jam\n\n';
+        paymentMessage += '📱 *Support & Bantuan:*\n';
+        paymentMessage += '• WhatsApp: 0822-1121-9993 (Angga)\n';
+        paymentMessage += '• Response time: < 1 jam\n';
+        paymentMessage += '• Layanan 24/7\n\n';
+        paymentMessage += '🎮 *Fitur yang akan aktif kembali:*\n';
+        paymentMessage += '• Notifikasi Hell Event otomatis\n';
+        paymentMessage += '• Info Monster Rotation harian\n';
+        paymentMessage += '• AI Assistant\n';
+        paymentMessage += '• Tag All Members\n';
+        paymentMessage += '• Anti-spam Protection\n\n';
+        paymentMessage += '💡 *Tips:* Gunakan pembayaran otomatis untuk aktivasi instan!';
         
         let sentCount = 0;
         let failedCount = 0;

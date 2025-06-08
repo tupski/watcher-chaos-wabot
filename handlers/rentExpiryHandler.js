@@ -91,6 +91,12 @@ function checkRenewalNotifications(whatsappClient) {
  */
 async function sendRenewalNotification(whatsappClient, ownerInfo, groupId, expiryDate, daysLeft) {
     try {
+        // Check if ownerInfo is valid
+        if (!ownerInfo || !ownerInfo.id) {
+            console.log(`Skipping renewal notification for ${groupId}: owner info not available`);
+            return;
+        }
+
         const renewalMessage =
             '⚠️ *Pengingat Perpanjangan Sewa Bot*\n\n' +
             `**Grup:** ${groupId}\n` +
@@ -160,28 +166,39 @@ async function sendExpiryNotification(whatsappClient, groupId, expiryDate) {
         const chat = chats.find(c => c.id._serialized === groupId);
 
         if (chat) {
-            const expiryMessage =
-                '⏰ *Masa Sewa Bot Telah Berakhir*\n\n' +
-                `📅 *Kadaluarsa:* ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
-                '❌ *Bot telah dinonaktifkan*\n' +
-                'Semua fitur bot tidak lagi tersedia.\n\n' +
-                '🔄 *Untuk Mengaktifkan Kembali:*\n' +
-                '• `!rent pay <durasi>` - Pembayaran otomatis (instan)\n' +
-                '• `!rent manual` - Info pembayaran manual\n' +
-                '• Hubungi: 0822-1121-9993 (Support langsung)\n\n' +
-                '💰 *Paket Sewa:*\n' +
-                '• 1 hari: Rp 2,000\n' +
-                '• 1 minggu: Rp 12,000\n' +
-                '• 1 bulan: Rp 50,000\n' +
-                '• 6 bulan: Rp 500,000\n' +
-                '• 1 tahun: Rp 950,000\n\n' +
-                '💳 *Pembayaran Otomatis (Rekomendasi):*\n' +
-                'QRIS, E-Wallet, Bank Transfer, Virtual Account\n' +
-                '⚡ Aktivasi instan setelah pembayaran!\n\n' +
-                '🏦 *Pembayaran Manual:*\n' +
-                'Transfer manual + konfirmasi ke WhatsApp\n' +
-                '⏱️ Aktivasi dalam 1-24 jam\n\n' +
-                'Terima kasih telah menggunakan layanan kami! 🙏';
+            const { generatePromoMessage } = require('../utils/promoSettings');
+            const promoMessage = generatePromoMessage();
+
+            let expiryMessage = '⏰ *Masa Sewa Bot Telah Berakhir*\n\n';
+            expiryMessage += `📅 *Kadaluarsa:* ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n`;
+            expiryMessage += '❌ *Bot telah dinonaktifkan*\n';
+            expiryMessage += 'Semua fitur bot tidak lagi tersedia.\n\n';
+
+            // Add promo if active
+            if (promoMessage) {
+                expiryMessage += promoMessage;
+            }
+
+            expiryMessage += '🔄 *Untuk Mengaktifkan Kembali:*\n';
+            expiryMessage += '• `!rent pay <durasi>` - Pembayaran otomatis (instan)\n';
+            if (promoMessage) {
+                expiryMessage += '• `!rent pay promo` - Gunakan promo spesial\n';
+            }
+            expiryMessage += '• `!rent manual` - Info pembayaran manual\n';
+            expiryMessage += '• Hubungi: 0822-1121-9993 (Support langsung)\n\n';
+            expiryMessage += '💰 *Paket Sewa:*\n';
+            expiryMessage += '• 1 hari: Rp 2,000\n';
+            expiryMessage += '• 1 minggu: Rp 12,000\n';
+            expiryMessage += '• 1 bulan: Rp 50,000\n';
+            expiryMessage += '• 6 bulan: Rp 500,000\n';
+            expiryMessage += '• 1 tahun: Rp 950,000\n\n';
+            expiryMessage += '💳 *Pembayaran Otomatis (Rekomendasi):*\n';
+            expiryMessage += 'QRIS, E-Wallet, Bank Transfer, Virtual Account, Retail Outlets\n';
+            expiryMessage += '⚡ Aktivasi instan setelah pembayaran via Xendit!\n\n';
+            expiryMessage += '🏦 *Pembayaran Manual:*\n';
+            expiryMessage += 'Transfer manual + konfirmasi ke WhatsApp\n';
+            expiryMessage += '⏱️ Aktivasi dalam 1-24 jam\n\n';
+            expiryMessage += 'Terima kasih telah menggunakan layanan kami! 🙏';
 
             await chat.sendMessage(expiryMessage);
             console.log(`Expiry notification sent to group ${groupId}`);
@@ -209,31 +226,44 @@ async function sendExpiredGroupPaymentReminders(whatsappClient) {
             return;
         }
 
-        const reminderMessage =
-            '💰 *Reminder: Perpanjang Sewa Bot*\n\n' +
-            '⏰ *Bot masih dalam status NONAKTIF*\n' +
-            'Masa sewa telah berakhir beberapa hari yang lalu.\n\n' +
-            '🔄 *Untuk mengaktifkan kembali:*\n\n' +
-            '💳 *Pembayaran Otomatis (Tercepat):*\n' +
-            '• `!rent pay 1` - 1 hari (Rp 2,000)\n' +
-            '• `!rent pay 7` - 1 minggu (Rp 12,000)\n' +
-            '• `!rent pay 30` - 1 bulan (Rp 50,000)\n' +
-            '• `!rent pay 180` - 6 bulan (Rp 500,000)\n' +
-            '• `!rent pay 365` - 1 tahun (Rp 950,000)\n\n' +
-            '⚡ *Aktivasi instan setelah pembayaran!*\n\n' +
-            '🏦 *Pembayaran Manual:*\n' +
-            '• `!rent manual` - Info rekening & cara transfer\n' +
-            '• Aktivasi dalam 1-24 jam setelah konfirmasi\n\n' +
-            '📱 *Butuh Bantuan?*\n' +
-            '• WhatsApp: 0822-1121-9993 (Angga)\n' +
-            '• Response time: < 1 jam\n' +
-            '• Layanan 24/7\n\n' +
-            '🎮 *Fitur yang akan aktif:*\n' +
-            '• Notifikasi Hell Event otomatis\n' +
-            '• Info Monster Rotation harian\n' +
-            '• AI Assistant & semua command\n\n' +
-            '💡 *Jangan lewatkan update game penting!*\n' +
-            'Aktifkan bot sekarang untuk tetap update.';
+        const { generatePromoMessage } = require('../utils/promoSettings');
+        const promoMessage = generatePromoMessage();
+
+        let reminderMessage = '💰 *Reminder: Perpanjang Sewa Bot*\n\n';
+        reminderMessage += '⏰ *Bot masih dalam status NONAKTIF*\n';
+        reminderMessage += 'Masa sewa telah berakhir beberapa hari yang lalu.\n\n';
+
+        // Add promo if active
+        if (promoMessage) {
+            reminderMessage += promoMessage;
+        }
+
+        reminderMessage += '🔄 *Untuk mengaktifkan kembali:*\n\n';
+        reminderMessage += '💳 *Pembayaran Otomatis (Tercepat):*\n';
+        reminderMessage += '• `!rent pay 1` - 1 hari (Rp 2,000)\n';
+        reminderMessage += '• `!rent pay 7` - 1 minggu (Rp 12,000)\n';
+        reminderMessage += '• `!rent pay 30` - 1 bulan (Rp 50,000)\n';
+        reminderMessage += '• `!rent pay 180` - 6 bulan (Rp 500,000)\n';
+        reminderMessage += '• `!rent pay 365` - 1 tahun (Rp 950,000)\n';
+
+        if (promoMessage) {
+            reminderMessage += '• `!rent pay promo` - Gunakan promo spesial\n';
+        }
+
+        reminderMessage += '\n⚡ *Aktivasi instan setelah pembayaran via Xendit!*\n\n';
+        reminderMessage += '🏦 *Pembayaran Manual:*\n';
+        reminderMessage += '• `!rent manual` - Info rekening & cara transfer\n';
+        reminderMessage += '• Aktivasi dalam 1-24 jam setelah konfirmasi\n\n';
+        reminderMessage += '📱 *Butuh Bantuan?*\n';
+        reminderMessage += '• WhatsApp: 0822-1121-9993 (Angga)\n';
+        reminderMessage += '• Response time: < 1 jam\n';
+        reminderMessage += '• Layanan 24/7\n\n';
+        reminderMessage += '🎮 *Fitur yang akan aktif:*\n';
+        reminderMessage += '• Notifikasi Hell Event otomatis\n';
+        reminderMessage += '• Info Monster Rotation harian\n';
+        reminderMessage += '• AI Assistant & semua command\n\n';
+        reminderMessage += '💡 *Jangan lewatkan update game penting!*\n';
+        reminderMessage += 'Aktifkan bot sekarang untuk tetap update.';
 
         let sentCount = 0;
         let failedCount = 0;

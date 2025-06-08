@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyPaymentNotification } = require('../utils/midtransPayment');
+const { verifyWebhookSignature, processPaymentNotification } = require('../utils/xenditPayment');
 const { setRentMode, getAllGroupsSettings } = require('../utils/groupSettings');
 
 // Store WhatsApp client reference
@@ -10,53 +10,339 @@ function setWhatsAppClient(client) {
     whatsappClient = client;
 }
 
-// Midtrans webhook notification
-router.post('/notification', async (req, res) => {
+// Xendit Invoice webhook - untuk invoice.paid, invoice.expired, dll
+router.post('/webhook/invoice', async (req, res) => {
     try {
-        console.log('Payment notification received:', req.body);
-        
-        const verification = await verifyPaymentNotification(req.body);
-        
-        if (!verification.success) {
-            console.error('Payment verification failed:', verification.error);
-            return res.status(400).json({ error: 'Verification failed' });
-        }
-        
-        const { 
-            orderId, 
-            transactionStatus, 
-            fraudStatus, 
-            grossAmount,
-            customField1: groupId,
-            customField2: duration,
-            customField3: ownerContactId
-        } = verification;
-        
-        console.log(`Payment notification - Order: ${orderId}, Status: ${transactionStatus}, Group: ${groupId}`);
-        
-        // Handle successful payment
-        if (transactionStatus === 'capture' || transactionStatus === 'settlement') {
-            if (fraudStatus === 'accept' || !fraudStatus) {
-                await handleSuccessfulPayment(orderId, groupId, duration, ownerContactId, grossAmount);
-            } else {
-                console.log(`Payment fraud detected for order: ${orderId}`);
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Xendit Invoice webhook received:`, {
+            event: req.body.event,
+            id: req.body.id,
+            external_id: req.body.external_id,
+            status: req.body.status,
+            amount: req.body.amount,
+            headers: {
+                'x-callback-token': req.headers['x-callback-token'] ? 'SET' : 'NOT SET',
+                'user-agent': req.headers['user-agent'],
+                'content-type': req.headers['content-type']
             }
+        });
+
+        // Verify webhook signature
+        const signature = req.headers['x-callback-token'];
+
+        // Get raw body for signature verification
+        let rawBody;
+        if (req.rawBody) {
+            rawBody = req.rawBody;
+        } else {
+            rawBody = JSON.stringify(req.body);
         }
-        // Handle failed payment
-        else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
+
+        console.log(`[${timestamp}] Webhook signature check:`, {
+            hasSignature: !!signature,
+            signatureLength: signature ? signature.length : 0,
+            bodyType: typeof rawBody,
+            bodyLength: rawBody.length
+        });
+
+        if (!verifyWebhookSignature(rawBody, signature)) {
+            console.error(`[${timestamp}] Invalid webhook signature:`, {
+                received: signature ? signature.substring(0, 20) + '...' : 'NO SIGNATURE',
+                bodyPreview: typeof rawBody === 'string' ? rawBody.substring(0, 100) + '...' : JSON.stringify(rawBody).substring(0, 100) + '...'
+            });
+            return res.status(401).json({ error: 'Invalid signature' });
+        }
+
+        console.log(`[${timestamp}] Webhook signature verified successfully`);
+
+        const notification = await processPaymentNotification(req.body);
+
+        if (!notification.success) {
+            console.error(`[${timestamp}] Payment notification processing failed:`, notification.error);
+            return res.status(400).json({ error: 'Processing failed' });
+        }
+
+        const {
+            orderId,
+            status,
+            amount,
+            metadata
+        } = notification;
+
+        const groupId = metadata.group_id;
+        const duration = metadata.duration;
+        const ownerContactId = metadata.owner_id;
+
+        console.log(`[${timestamp}] Processing webhook - Order: ${orderId}, Status: ${status}, Group: ${groupId}, Duration: ${duration} days, Amount: IDR ${amount}`);
+
+        // Handle successful payment
+        if (status === 'PAID') {
+            console.log(`[${timestamp}] Processing successful payment for group ${groupId}`);
+            await handleSuccessfulPayment(orderId, groupId, duration, ownerContactId, amount);
+            console.log(`[${timestamp}] Successfully activated bot for group ${groupId}`);
+        }
+        // Handle failed/expired payment
+        else if (status === 'EXPIRED') {
+            console.log(`[${timestamp}] Processing expired payment for group ${groupId}`);
             await handleFailedPayment(orderId, groupId, ownerContactId);
         }
         // Handle pending payment
-        else if (transactionStatus === 'pending') {
+        else if (status === 'PENDING') {
+            console.log(`[${timestamp}] Processing pending payment for group ${groupId}`);
             await handlePendingPayment(orderId, groupId, ownerContactId);
+        } else {
+            console.log(`[${timestamp}] Unknown payment status: ${status} for group ${groupId}`);
         }
-        
+
         res.status(200).json({ status: 'OK' });
-        
+
     } catch (error) {
-        console.error('Error handling payment notification:', error);
+        console.error('Error handling Xendit Invoice webhook:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// Xendit Payment webhook - untuk payment method specific events
+router.post('/webhook/payment', async (req, res) => {
+    try {
+        console.log('Xendit Payment webhook received:', {
+            event: req.body.event,
+            id: req.body.id,
+            external_id: req.body.external_id,
+            status: req.body.status
+        });
+
+        // Verify webhook signature
+        const signature = req.headers['x-callback-token'];
+        const rawBody = JSON.stringify(req.body);
+
+        if (!verifyWebhookSignature(rawBody, signature)) {
+            console.error('Invalid webhook signature');
+            return res.status(401).json({ error: 'Invalid signature' });
+        }
+
+        // Process payment-specific events
+        const event = req.body.event;
+
+        if (event === 'payment.paid' || event === 'payment.succeeded') {
+            // Handle successful payment
+            const orderId = req.body.external_id;
+            const amount = req.body.amount;
+            const metadata = req.body.metadata || {};
+
+            await handleSuccessfulPayment(
+                orderId,
+                metadata.group_id,
+                metadata.duration,
+                metadata.owner_id,
+                amount
+            );
+        }
+
+        res.status(200).json({ status: 'OK' });
+
+    } catch (error) {
+        console.error('Error handling Xendit Payment webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Xendit Virtual Account webhook
+router.post('/webhook/va', async (req, res) => {
+    try {
+        console.log('Xendit VA webhook received:', {
+            event: req.body.event,
+            id: req.body.id,
+            external_id: req.body.external_id
+        });
+
+        // Verify webhook signature
+        const signature = req.headers['x-callback-token'];
+        const rawBody = JSON.stringify(req.body);
+
+        if (!verifyWebhookSignature(rawBody, signature)) {
+            console.error('Invalid webhook signature');
+            return res.status(401).json({ error: 'Invalid signature' });
+        }
+
+        // Process VA payment
+        if (req.body.event === 'virtual_account.paid') {
+            const orderId = req.body.external_id;
+            const amount = req.body.amount;
+
+            // Extract metadata from external_id or description
+            // Format: RENT_groupId_timestamp atau PROMO_groupId_timestamp
+            const parts = orderId.split('_');
+            if (parts.length >= 3) {
+                const groupId = parts[1] + '@g.us';
+                // You might need to get duration from database or other source
+                await handleSuccessfulPayment(orderId, groupId, '1', null, amount);
+            }
+        }
+
+        res.status(200).json({ status: 'OK' });
+
+    } catch (error) {
+        console.error('Error handling Xendit VA webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Xendit E-Wallet webhook
+router.post('/webhook/ewallet', async (req, res) => {
+    try {
+        console.log('Xendit E-Wallet webhook received:', {
+            event: req.body.event,
+            id: req.body.id,
+            external_id: req.body.external_id
+        });
+
+        // Verify webhook signature
+        const signature = req.headers['x-callback-token'];
+        const rawBody = JSON.stringify(req.body);
+
+        if (!verifyWebhookSignature(rawBody, signature)) {
+            console.error('Invalid webhook signature');
+            return res.status(401).json({ error: 'Invalid signature' });
+        }
+
+        // Process E-Wallet payment
+        if (req.body.event === 'ewallet.payment.paid') {
+            const orderId = req.body.external_id;
+            const amount = req.body.amount;
+
+            // Extract metadata from external_id
+            const parts = orderId.split('_');
+            if (parts.length >= 3) {
+                const groupId = parts[1] + '@g.us';
+                await handleSuccessfulPayment(orderId, groupId, '1', null, amount);
+            }
+        }
+
+        res.status(200).json({ status: 'OK' });
+
+    } catch (error) {
+        console.error('Error handling Xendit E-Wallet webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Webhook test endpoint untuk development
+router.post('/webhook/test', async (req, res) => {
+    try {
+        console.log('Webhook test endpoint called:', {
+            headers: req.headers,
+            body: req.body,
+            timestamp: new Date().toISOString()
+        });
+
+        res.status(200).json({
+            status: 'OK',
+            message: 'Webhook test received successfully',
+            timestamp: new Date().toISOString(),
+            received_data: req.body
+        });
+
+    } catch (error) {
+        console.error('Error in webhook test:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Webhook status endpoint untuk monitoring
+router.get('/webhook/status', (req, res) => {
+    res.status(200).json({
+        status: 'OK',
+        message: 'Webhook endpoints are active',
+        endpoints: {
+            invoice: '/payment/webhook/invoice',
+            payment: '/payment/webhook/payment',
+            virtual_account: '/payment/webhook/va',
+            ewallet: '/payment/webhook/ewallet',
+            test: '/payment/webhook/test'
+        },
+        timestamp: new Date().toISOString(),
+        server_info: {
+            base_url: process.env.BASE_URL,
+            environment: process.env.XENDIT_IS_PRODUCTION === 'true' ? 'production' : 'development'
+        }
+    });
+});
+
+// Payment Request V2 webhook endpoints
+router.post('/finish', async (req, res) => {
+    try {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] Payment Request V2 webhook received (payment.succeeded):`, {
+            event: req.body.event,
+            payment_id: req.body.data?.id,
+            reference_id: req.body.data?.reference_id,
+            amount: req.body.data?.amount,
+            status: req.body.data?.status
+        });
+
+        // Handle payment.succeeded event
+        if (req.body.event === 'payment.succeeded' && req.body.data) {
+            const paymentData = req.body.data;
+
+            // Extract group info from reference_id if available
+            if (paymentData.reference_id) {
+                const parts = paymentData.reference_id.split('_');
+                if (parts.length >= 3) {
+                    const groupId = parts[1] + '@g.us';
+                    const amount = paymentData.amount;
+
+                    console.log(`[${timestamp}] Processing Payment Request success for group ${groupId}, amount: IDR ${amount}`);
+
+                    // You can add activation logic here if needed
+                    // For now, just log the success
+                }
+            }
+        }
+
+        res.status(200).json({ status: 'OK', message: 'Payment request webhook processed' });
+
+    } catch (error) {
+        console.error('Error handling Payment Request webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/unfinish', async (req, res) => {
+    try {
+        console.log('Payment Request V2 webhook received (unfinish):', req.body);
+        res.status(200).json({ status: 'OK', message: 'Unfinish webhook received' });
+    } catch (error) {
+        console.error('Error handling unfinish webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/pending', async (req, res) => {
+    try {
+        console.log('Payment Request V2 webhook received (pending):', req.body);
+        res.status(200).json({ status: 'OK', message: 'Pending webhook received' });
+    } catch (error) {
+        console.error('Error handling pending webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+router.post('/failed', async (req, res) => {
+    try {
+        console.log('Payment Request V2 webhook received (failed):', req.body);
+        res.status(200).json({ status: 'OK', message: 'Failed webhook received' });
+    } catch (error) {
+        console.error('Error handling failed webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Legacy webhook endpoint untuk backward compatibility
+router.post('/notification', async (req, res) => {
+    console.log('Legacy webhook endpoint called, redirecting to /webhook/invoice');
+    req.url = '/webhook/invoice';
+    return router.handle(req, res);
 });
 
 // Handle successful payment
@@ -125,18 +411,19 @@ async function handleFailedPayment(orderId, groupId, ownerContactId) {
         console.log(`Processing failed payment: ${orderId} for group: ${groupId}`);
         
         if (whatsappClient && ownerContactId) {
-            const failMessage = 
-                '❌ *Pembayaran Gagal*\n\n' +
+            const failMessage =
+                '❌ *Pembayaran Gagal/Expired*\n\n' +
                 `**Order ID:** ${orderId}\n\n` +
-                '**Status:** Pembayaran dibatalkan atau gagal\n\n' +
+                '**Status:** Pembayaran dibatalkan atau kadaluarsa\n\n' +
                 '🔄 *Untuk mencoba lagi:*\n' +
                 '• Gunakan command `!rent pay <durasi>` di grup\n' +
                 '• Atau hubungi: 0822-1121-9993 (Angga)\n\n' +
                 '💡 *Tips:*\n' +
                 '• Pastikan saldo mencukupi\n' +
                 '• Coba metode pembayaran lain\n' +
+                '• Selesaikan pembayaran dalam 24 jam\n' +
                 '• Periksa koneksi internet';
-            
+
             await whatsappClient.sendMessage(ownerContactId, failMessage);
         }
         
@@ -255,6 +542,36 @@ router.get('/finish', (req, res) => {
                     <p>Terima kasih! Pembayaran Anda telah berhasil diproses.</p>
                     <p>Bot Lords Mobile akan aktif dalam beberapa saat.</p>
                     <p>Konfirmasi akan dikirim ke WhatsApp Anda.</p>
+                </div>
+                <a href="https://wa.me/6282211219993" class="button">Hubungi Support</a>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// Payment unfinish page
+router.get('/unfinish', (req, res) => {
+    res.send(`
+        <html>
+        <head>
+            <title>Pembayaran Belum Selesai</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #fffbf0; }
+                .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                .warning { color: #ffc107; font-size: 24px; margin-bottom: 20px; }
+                .info { color: #666; line-height: 1.6; }
+                .button { background: #ffc107; color: #212529; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="warning">⚠️ Pembayaran Belum Selesai</div>
+                <div class="info">
+                    <p>Pembayaran Anda belum diselesaikan.</p>
+                    <p>Jika Anda ingin melanjutkan, silakan gunakan command <code>!rent pay</code> lagi di grup.</p>
+                    <p>Atau hubungi support untuk bantuan.</p>
                 </div>
                 <a href="https://wa.me/6282211219993" class="button">Hubungi Support</a>
             </div>

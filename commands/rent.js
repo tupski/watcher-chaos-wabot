@@ -1,6 +1,7 @@
 const { getChatInfo } = require('../utils/chatUtils');
 const { setRentMode, getRentStatus, isBotOwner } = require('../utils/groupSettings');
-const { createPaymentTransaction, getPricingInfo, calculateCustomPrice } = require('../utils/midtransPayment');
+const { createPaymentTransaction, createPromoPaymentTransaction, getPricingInfo, calculateCustomPrice } = require('../utils/xenditPayment');
+const { getPromoPrice, generatePromoMessage, getPromoInfo } = require('../utils/promoSettings');
 
 /**
  * Command untuk mengelola sewa bot
@@ -113,6 +114,12 @@ module.exports = async (client, message) => {
             const pricing = getPricingInfo();
             let priceList = '💰 *Paket Sewa Bot Lords Mobile*\n\n';
 
+            // Add promo if active
+            const promoMessage = generatePromoMessage();
+            if (promoMessage) {
+                priceList += promoMessage;
+            }
+
             Object.entries(pricing).forEach(([days, info]) => {
                 priceList += `📦 **${info.name}**\n`;
                 priceList += `   • Durasi: ${info.days} hari\n`;
@@ -123,12 +130,15 @@ module.exports = async (client, message) => {
             priceList += '**Usage:**\n';
             priceList += '• `!rent pay <durasi>` - Pembayaran otomatis\n';
             priceList += '  Contoh: `!rent pay 30`\n';
+            if (promoMessage) {
+                priceList += '• `!rent pay promo` - Gunakan promo aktif\n';
+            }
             priceList += '• `!rent manual` - Info pembayaran manual\n';
             priceList += '• `!rent DDMMYYYY` - Set manual (BOT_OWNER)\n';
             priceList += '• `!rent disable` - Nonaktifkan sewa (BOT_OWNER)\n';
             priceList += '• `!rent status` - Cek status (admin only)\n\n';
-            priceList += '💳 *Pembayaran Otomatis via Midtrans*\n';
-            priceList += 'QRIS, E-Wallet, Bank Transfer, Virtual Account';
+            priceList += '💳 *Pembayaran Otomatis via Xendit*\n';
+            priceList += 'QRIS, E-Wallet, Bank Transfer, Virtual Account, Retail Outlets';
 
             await message.reply(priceList);
             return;
@@ -145,10 +155,10 @@ module.exports = async (client, message) => {
             });
 
             manualPaymentInfo += '\n🏦 *Rekening Pembayaran:*\n';
-            manualPaymentInfo += '• **BCA:** 1234567890 a.n. Angga Artupas\n';
-            manualPaymentInfo += '• **BNI:** 0987654321 a.n. Angga Artupas\n';
-            manualPaymentInfo += '• **DANA:** 0822-1121-9993\n';
-            manualPaymentInfo += '• **GoPay:** 0822-1121-9993\n';
+            manualPaymentInfo += '• **BCA:** 6050381330 a.n. Angga Artupas\n';
+            // manualPaymentInfo += '• **BNI:** 0987654321 a.n. Angga Artupas\n';
+            manualPaymentInfo += '• **DANA:** 0819-1191-9993\n';
+            manualPaymentInfo += '• **GoPay:** 0819-1191-9993\n';
             manualPaymentInfo += '• **OVO:** 0822-1121-9993\n\n';
 
             manualPaymentInfo += '📝 *Cara Pembayaran Manual:*\n';
@@ -159,7 +169,7 @@ module.exports = async (client, message) => {
             manualPaymentInfo += '5. Bot akan diaktifkan dalam 1-24 jam\n\n';
 
             manualPaymentInfo += '⚡ *Pembayaran Otomatis (Lebih Cepat):*\n';
-            manualPaymentInfo += 'Gunakan `!rent pay [durasi]` untuk aktivasi instan\n\n';
+            manualPaymentInfo += 'Gunakan `!rent pay [durasi]` untuk aktivasi instan via Xendit\n\n';
 
             manualPaymentInfo += '📞 *Kontak Support:*\n';
             manualPaymentInfo += '• WhatsApp: 0822-1121-9993 (Angga)\n';
@@ -174,34 +184,95 @@ module.exports = async (client, message) => {
         if (option === 'pay') {
             const duration = args[1];
             if (!duration) {
-                await message.reply(
-                    '❌ *Durasi Tidak Disebutkan*\n\n' +
-                    '**Contoh penggunaan:**\n' +
-                    '• `!rent pay 1` - 1 hari (Rp 2,000)\n' +
-                    '• `!rent pay 7` - 1 minggu (Rp 10,000)\n' +
-                    '• `!rent pay 30` - 1 bulan (Rp 50,000)\n' +
-                    '• `!rent pay 180` - 6 bulan (Rp 500,000)\n' +
-                    '• `!rent pay 365` - 1 tahun (Rp 950,000)\n\n' +
-                    'Ketik `!rent` untuk melihat semua paket.'
-                );
+                const promoMessage = generatePromoMessage();
+                let helpMessage = '❌ *Durasi Tidak Disebutkan*\n\n';
+
+                if (promoMessage) {
+                    helpMessage += promoMessage;
+                }
+
+                helpMessage += '**Contoh penggunaan:**\n';
+                helpMessage += '• `!rent pay 1` - 1 hari (Rp 2,000)\n';
+                helpMessage += '• `!rent pay 7` - 1 minggu (Rp 12,000)\n';
+                helpMessage += '• `!rent pay 30` - 1 bulan (Rp 50,000)\n';
+                helpMessage += '• `!rent pay 180` - 6 bulan (Rp 500,000)\n';
+                helpMessage += '• `!rent pay 365` - 1 tahun (Rp 950,000)\n';
+
+                if (promoMessage) {
+                    helpMessage += '• `!rent pay promo` - Gunakan promo aktif\n';
+                }
+
+                helpMessage += '\nKetik `!rent` untuk melihat semua paket.';
+
+                await message.reply(helpMessage);
                 return;
             }
 
-            const pricing = getPricingInfo();
-            const selectedPackage = pricing[duration];
+            let selectedPackage = null;
+            let isPromo = false;
+            let promoInfo = null;
 
-            if (!selectedPackage) {
-                await message.reply(
-                    '❌ *Paket Tidak Tersedia*\n\n' +
-                    'Paket yang tersedia:\n' +
-                    '• 1 hari (Rp 2,000)\n' +
-                    '• 7 hari (Rp 10,000)\n' +
-                    '• 30 hari (Rp 50,000)\n' +
-                    '• 180 hari (Rp 500,000)\n' +
-                    '• 365 hari (Rp 950,000)\n\n' +
-                    'Ketik `!rent` untuk melihat detail lengkap.'
-                );
-                return;
+            // Handle promo payment
+            if (duration.toLowerCase() === 'promo') {
+                promoInfo = getPromoPrice(null); // Get any active promo
+                const activePromo = getPromoInfo();
+
+                if (!activePromo) {
+                    await message.reply(
+                        '❌ *Tidak Ada Promo Aktif*\n\n' +
+                        'Saat ini tidak ada promo yang tersedia.\n\n' +
+                        '**Paket normal tersedia:**\n' +
+                        '• `!rent pay 1` - 1 hari (Rp 2,000)\n' +
+                        '• `!rent pay 7` - 1 minggu (Rp 12,000)\n' +
+                        '• `!rent pay 30` - 1 bulan (Rp 50,000)\n' +
+                        '• `!rent pay 180` - 6 bulan (Rp 500,000)\n' +
+                        '• `!rent pay 365` - 1 tahun (Rp 950,000)\n\n' +
+                        'Ketik `!rent` untuk melihat semua paket.'
+                    );
+                    return;
+                }
+
+                const pricing = getPricingInfo();
+                const originalPackage = pricing[activePromo.duration.toString()];
+
+                selectedPackage = {
+                    ...originalPackage,
+                    price: activePromo.promoPrice,
+                    originalPrice: activePromo.originalPrice,
+                    savings: activePromo.savings,
+                    discountPercent: activePromo.discountPercent
+                };
+                isPromo = true;
+
+            } else {
+                // Handle normal payment
+                const pricing = getPricingInfo();
+                selectedPackage = pricing[duration];
+
+                if (!selectedPackage) {
+                    const promoMessage = generatePromoMessage();
+                    let errorMessage = '❌ *Paket Tidak Tersedia*\n\n';
+
+                    if (promoMessage) {
+                        errorMessage += promoMessage;
+                    }
+
+                    errorMessage += 'Paket yang tersedia:\n';
+                    errorMessage += '• 1 hari (Rp 2,000)\n';
+                    errorMessage += '• 7 hari (Rp 12,000)\n';
+                    errorMessage += '• 30 hari (Rp 50,000)\n';
+                    errorMessage += '• 180 hari (Rp 500,000)\n';
+                    errorMessage += '• 365 hari (Rp 950,000)\n';
+
+                    if (promoMessage) {
+                        errorMessage += '• `!rent pay promo` - Gunakan promo aktif\n';
+                    }
+
+                    errorMessage += '\nKetik `!rent` untuk melihat detail lengkap.';
+
+                    await message.reply(errorMessage);
+                    return;
+                }
             }
 
             // Create payment transaction
@@ -211,35 +282,69 @@ module.exports = async (client, message) => {
                 id: chatInfo.contact.id._serialized
             };
 
-            const paymentResult = await createPaymentTransaction(
-                groupId,
-                chatInfo.chat.name,
-                ownerInfo,
-                selectedPackage.days
-            );
+            // Create payment transaction
+            let paymentResult;
+
+            if (isPromo) {
+                // Use promo payment function
+                paymentResult = await createPromoPaymentTransaction(
+                    groupId,
+                    chatInfo.chat.name,
+                    ownerInfo,
+                    selectedPackage.days,
+                    selectedPackage.price,
+                    selectedPackage.originalPrice
+                );
+            } else {
+                // Use normal payment function
+                paymentResult = await createPaymentTransaction(
+                    groupId,
+                    chatInfo.chat.name,
+                    ownerInfo,
+                    selectedPackage.days
+                );
+            }
 
             if (paymentResult.success) {
-                const paymentMessage =
-                    '💳 *Link Pembayaran Berhasil Dibuat*\n\n' +
-                    `**Detail Pesanan:**\n` +
-                    `• Grup: ${chatInfo.chat.name}\n` +
-                    `• Paket: ${selectedPackage.name}\n` +
-                    `• Durasi: ${selectedPackage.days} hari\n` +
-                    `• Harga: Rp ${selectedPackage.price.toLocaleString('id-ID')}\n` +
-                    `• Order ID: ${paymentResult.orderId}\n\n` +
-                    '🔗 *Link Pembayaran:*\n' +
-                    `${paymentResult.paymentUrl}\n\n` +
-                    '💰 *Metode Pembayaran:*\n' +
-                    '• 📱 QRIS (Scan & Pay)\n' +
-                    '• 💳 E-Wallet (GoPay, OVO, DANA, ShopeePay)\n' +
-                    '• 🏦 Transfer Bank\n' +
-                    '• 🔢 Virtual Account\n\n' +
-                    '⏰ *Batas Waktu:* 24 jam\n\n' +
-                    '✅ *Setelah Pembayaran:*\n' +
-                    '• Bot aktif otomatis\n' +
-                    '• Konfirmasi dikirim ke grup\n' +
-                    '• Semua fitur tersedia\n\n' +
-                    '❓ *Bantuan:* 0822-1121-9993 (Angga)';
+                let paymentMessage = '💳 *Link Pembayaran Berhasil Dibuat*\n\n';
+
+                if (isPromo) {
+                    paymentMessage += '🔥 *PROMO SPESIAL DIGUNAKAN!*\n\n';
+                }
+
+                paymentMessage += `**Detail Pesanan:**\n`;
+                paymentMessage += `• Grup: ${chatInfo.chat.name}\n`;
+                paymentMessage += `• Paket: ${selectedPackage.name}\n`;
+                paymentMessage += `• Durasi: ${selectedPackage.days} hari\n`;
+
+                if (isPromo) {
+                    paymentMessage += `• Harga Normal: ~~Rp ${selectedPackage.originalPrice.toLocaleString('id-ID')}~~\n`;
+                    paymentMessage += `• Harga Promo: **Rp ${selectedPackage.price.toLocaleString('id-ID')}**\n`;
+                    paymentMessage += `• Hemat: Rp ${selectedPackage.savings.toLocaleString('id-ID')} (${selectedPackage.discountPercent}%)\n`;
+                } else {
+                    paymentMessage += `• Harga: Rp ${selectedPackage.price.toLocaleString('id-ID')}\n`;
+                }
+
+                paymentMessage += `• Order ID: ${paymentResult.orderId}\n\n`;
+                paymentMessage += '🔗 *Link Pembayaran:*\n';
+                paymentMessage += `${paymentResult.paymentUrl}\n\n`;
+                paymentMessage += '💰 *Metode Pembayaran:*\n';
+                paymentMessage += '• 📱 QRIS (Scan & Pay)\n';
+                paymentMessage += '• 💳 E-Wallet (GoPay, OVO, DANA, ShopeePay, LinkAja)\n';
+                paymentMessage += '• 🏦 Transfer Bank (BCA, BNI, BRI, Mandiri, Permata)\n';
+                paymentMessage += '• 🔢 Virtual Account\n';
+                paymentMessage += '• 🏪 Retail Outlets (Alfamart, Indomaret)\n\n';
+                paymentMessage += '⏰ *Batas Waktu:* 24 jam\n\n';
+                paymentMessage += '✅ *Setelah Pembayaran:*\n';
+                paymentMessage += '• Bot aktif otomatis\n';
+                paymentMessage += '• Konfirmasi dikirim ke grup\n';
+                paymentMessage += '• Semua fitur tersedia\n\n';
+
+                if (isPromo) {
+                    paymentMessage += '🎉 *Terima kasih telah menggunakan promo!*\n\n';
+                }
+
+                paymentMessage += '❓ *Bantuan:* 0822-1121-9993 (Angga)';
 
                 await message.reply(paymentMessage);
 

@@ -48,18 +48,40 @@ module.exports = async (client, message) => {
             console.log(`Bot is not active in group ${groupId}, showing promo message for command: ${commandName}`);
 
             // Send promo message when bot is inactive
-            const promoMessage =
-                '🎉 *Promo!*\n' +
-                'Sewa Bot Lords Mobile cuma *30ribu/bulan!*\n\n' +
-                '📞 *Hubungi:*\n' +
-                '0822-1121-9993 (Angga)\n\n' +
-                '✨ *Fitur Bot:*\n' +
-                '• Notifikasi Hell Event otomatis\n' +
-                '• Info Monster Rotation harian\n' +
-                '• AI Assistant\n' +
-                '• Tag All Members\n' +
-                '• Anti-spam Protection\n\n' +
-                '💰 *Harga Terjangkau - Fitur Lengkap!*';
+            const { generatePromoMessage } = require('../utils/promoSettings');
+            const activePromo = generatePromoMessage();
+
+            let promoMessage = '🔒 *Bot Tidak Aktif*\n\n';
+            promoMessage += 'Bot saat ini dalam status NONAKTIF.\n\n';
+
+            // Add active promo if available
+            if (activePromo) {
+                promoMessage += activePromo;
+            }
+
+            promoMessage += '💰 *Paket Sewa Bot Lords Mobile:*\n';
+            promoMessage += '• 1 hari: Rp 2,000\n';
+            promoMessage += '• 1 minggu: Rp 12,000\n';
+            promoMessage += '• 1 bulan: Rp 50,000\n';
+            promoMessage += '• 6 bulan: Rp 500,000\n';
+            promoMessage += '• 1 tahun: Rp 950,000\n\n';
+
+            promoMessage += '📱 *Cara Aktivasi:*\n';
+            promoMessage += '• `!rent pay <durasi>` - Pembayaran otomatis\n';
+            if (activePromo) {
+                promoMessage += '• `!rent pay promo` - Gunakan promo spesial\n';
+            }
+            promoMessage += '• `!rent manual` - Info pembayaran manual\n';
+            promoMessage += '• Hubungi: 0822-1121-9993 (Angga)\n\n';
+
+            promoMessage += '✨ *Fitur Bot:*\n';
+            promoMessage += '• Notifikasi Hell Event otomatis\n';
+            promoMessage += '• Info Monster Rotation harian\n';
+            promoMessage += '• AI Assistant\n';
+            promoMessage += '• Tag All Members\n';
+            promoMessage += '• Anti-spam Protection\n\n';
+
+            promoMessage += '⚡ *Aktivasi instan dengan pembayaran otomatis via Xendit!*';
 
             await message.reply(promoMessage);
             return;
@@ -87,7 +109,12 @@ module.exports = async (client, message) => {
         'enablebot': 'enablebot.js',
         'disablebot': 'disablebot.js',
         'rent': 'rent.js',
-        'grouprent': 'grouprent.js'
+        'grouprent': 'grouprent.js',
+        'promo': 'promo.js',
+        'sendpayment': 'sendpayment.js',
+        'activate': 'activate.js',
+        'revenue': 'revenue.js',
+        'paymentlog': 'paymentlog.js'
     };
 
     // Get the actual command file
