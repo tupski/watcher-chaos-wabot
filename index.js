@@ -3,7 +3,7 @@ const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const qrcode = require('qrcode-terminal');
 const qr = require('qrcode');
-const { server, io, setWhatsAppClient } = require('./server');
+const { server, io, setWhatsAppClient, setPaymentWhatsAppClient } = require('./server');
 const Message = require('./models/message');
 const path = require('path');
 const fs = require('fs');
@@ -19,6 +19,7 @@ const hellEventHandler = require('./commands/hell');
 const messageHandler = require('./handlers/messageHandler');
 const { startMonsterResetScheduler } = require('./handlers/monsterResetHandler');
 const { startRentExpiryScheduler } = require('./handlers/rentExpiryHandler');
+const { handleGroupJoin } = require('./handlers/groupJoinHandler');
 
 // Set the WhatsApp client for API routes (will be updated when client is ready)
 setWhatsAppClient(null);
@@ -68,7 +69,8 @@ whatsappClient.on('ready', () => {
 
     // Set the WhatsApp client for API routes
     setWhatsAppClient(whatsappClient);
-    console.log('WhatsApp client set for API routes');
+    setPaymentWhatsAppClient(whatsappClient);
+    console.log('WhatsApp client set for API and payment routes');
 
     // Start monster reset scheduler
     startMonsterResetScheduler(whatsappClient);
@@ -113,6 +115,15 @@ discordClient.login(process.env.DISCORD_TOKEN)
     .catch((error) => {
         console.error('Failed to login to Discord client:', error);
     });
+
+// Handle WhatsApp group join events
+whatsappClient.on('group_join', async (notification) => {
+    try {
+        await handleGroupJoin(whatsappClient, notification);
+    } catch (error) {
+        console.error('Error handling group join:', error);
+    }
+});
 
 // Handle WhatsApp message events
 whatsappClient.on('message', async (message) => {

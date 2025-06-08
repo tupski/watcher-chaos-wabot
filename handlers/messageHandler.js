@@ -86,7 +86,8 @@ module.exports = async (client, message) => {
         'permission': 'permission.js',
         'enablebot': 'enablebot.js',
         'disablebot': 'disablebot.js',
-        'rent': 'rent.js'
+        'rent': 'rent.js',
+        'grouprent': 'grouprent.js'
     };
 
     // Get the actual command file

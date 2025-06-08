@@ -12,6 +12,12 @@ const defaultSettings = {
     rentMode: false, // true = mode sewa, false = mode normal
     rentExpiry: null, // tanggal kadaluarsa sewa (ISO string)
     rentActivatedAt: null, // tanggal aktivasi sewa (ISO string)
+    rentOwner: null, // info owner yang bayar sewa { name, number, id }
+    rentDuration: null, // durasi sewa dalam hari
+    rentPrice: null, // harga sewa yang dibayar
+    paymentId: null, // ID pembayaran Midtrans
+    hasUsedTrial: false, // true jika grup sudah pernah pakai trial
+    trialUsedAt: null, // tanggal pertama kali pakai trial (ISO string)
     commandPermissions: {
         hell: 'all',     // 'all', 'admin'
         monster: 'all',
@@ -188,11 +194,15 @@ function isBotOwner(contact) {
 }
 
 // Set rent mode for a group
-function setRentMode(groupId, enabled, expiryDate = null) {
+function setRentMode(groupId, enabled, expiryDate = null, ownerInfo = null, duration = null, price = null, paymentId = null) {
     const updateData = {
         rentMode: enabled,
         rentExpiry: expiryDate ? expiryDate.toISOString() : null,
-        rentActivatedAt: enabled ? new Date().toISOString() : null
+        rentActivatedAt: enabled ? new Date().toISOString() : null,
+        rentOwner: enabled ? ownerInfo : null,
+        rentDuration: enabled ? duration : null,
+        rentPrice: enabled ? price : null,
+        paymentId: enabled ? paymentId : null
     };
 
     return updateGroupSettings(groupId, updateData);
@@ -237,6 +247,68 @@ function isBotActiveInGroup(groupId) {
     return settings.botEnabled !== false;
 }
 
+// Get all groups with their settings
+function getAllGroupsSettings() {
+    try {
+        if (fs.existsSync(settingsFile)) {
+            const data = fs.readFileSync(settingsFile, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error loading all group settings:', error);
+    }
+    return {};
+}
+
+// Get groups that are expired and need payment
+function getExpiredGroups() {
+    const allSettings = getAllGroupsSettings();
+    const expiredGroups = [];
+    const now = new Date();
+
+    for (const [groupId, settings] of Object.entries(allSettings)) {
+        if (settings.rentMode && settings.rentExpiry) {
+            const expiryDate = new Date(settings.rentExpiry);
+            if (now >= expiryDate) {
+                expiredGroups.push({
+                    groupId,
+                    settings,
+                    expiryDate,
+                    daysExpired: Math.ceil((now - expiryDate) / (1000 * 60 * 60 * 24))
+                });
+            }
+        }
+    }
+
+    return expiredGroups;
+}
+
+// Get groups that need renewal notification (less than 3 days left)
+function getGroupsNeedingRenewal() {
+    const allSettings = getAllGroupsSettings();
+    const needRenewal = [];
+    const now = new Date();
+    const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
+
+    for (const [groupId, settings] of Object.entries(allSettings)) {
+        if (settings.rentMode && settings.rentExpiry && settings.rentOwner) {
+            const expiryDate = new Date(settings.rentExpiry);
+
+            // Check if expiry is within 3 days and still active
+            if (expiryDate > now && expiryDate <= threeDaysFromNow) {
+                needRenewal.push({
+                    groupId,
+                    settings,
+                    expiryDate,
+                    daysLeft: Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24))
+                });
+            }
+        }
+    }
+
+    return needRenewal;
+}
+
 module.exports = {
     getGroupSettings,
     updateGroupSettings,
@@ -251,5 +323,8 @@ module.exports = {
     isRentActive,
     getRentStatus,
     isBotActiveInGroup,
+    getAllGroupsSettings,
+    getGroupsNeedingRenewal,
+    getExpiredGroups,
     defaultSettings
 };

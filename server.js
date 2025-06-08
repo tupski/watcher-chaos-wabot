@@ -4,6 +4,7 @@ const path = require('path');
 const socketIo = require('socket.io');
 const { router: apiRoutes, setWhatsAppClient } = require('./routes/api');
 const authRoutes = require('./routes/auth');
+const { router: paymentRoutes, setWhatsAppClient: setPaymentWhatsAppClient } = require('./routes/payment');
 
 // Create Express app
 const app = express();
@@ -20,6 +21,9 @@ app.use('/api', apiRoutes);
 // Auth routes
 app.use('/auth', authRoutes);
 
+// Payment routes
+app.use('/payment', paymentRoutes);
+
 // Socket.io connection
 io.on('connection', (socket) => {
     console.log('New client connected');
@@ -35,4 +39,4 @@ app.get('*', (req, res) => {
 });
 
 // Export the server, io, app, and setWhatsAppClient for use in index.js
-module.exports = { server, io, app, setWhatsAppClient };
+module.exports = { server, io, app, setWhatsAppClient, setPaymentWhatsAppClient };
