@@ -15,7 +15,8 @@ const requiredEnvVars = [
     'WHATSAPP_CLIENT_ID',
     'WHATSAPP_GROUP_IDS',
     'ALLOWED_LINKS',
-    'TIMEZONE_OFFSET'
+    'TIMEZONE_OFFSET',
+    'ONLY_WATCHER_CHAOS'
 ];
 
 let envIssues = 0;
@@ -144,6 +145,7 @@ console.log('   - See DISCORD_TOKEN_GUIDE.md for detailed setup instructions');
 console.log('\n✅ Recent Fixes Applied:');
 console.log('   - Hell Event output format corrected (*Reward(s)*: value)');
 console.log('   - Hell Event time format: "Ended X hour/hours ago" when expired');
+console.log('   - Hell Event filter: ONLY_WATCHER_CHAOS setting added');
 console.log('   - Tagall command improved group detection');
 console.log('   - Anti-spam link enhanced with better regex and warning system');
 console.log('   - Ping command shows accurate latency');

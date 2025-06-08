@@ -177,6 +177,12 @@ After successful startup, you should see:
    - Configure `ALLOWED_LINKS` with domain names only (no http/https needed)
    - Example: `ALLOWED_LINKS=example.com,google.com,github.com`
 
+#### Hell Event Filter Configuration
+1. **ONLY_WATCHER_CHAOS Setting**
+   - Set `ONLY_WATCHER_CHAOS=true` to only receive Watcher/Chaos Dragon notifications
+   - Set `ONLY_WATCHER_CHAOS=false` to receive all Hell Event notifications
+   - The `!hell` command always shows the latest event regardless of filter setting
+
 #### Hell Command Shows "Data tidak tersedia"
 1. **Discord Integration Issues**
    - Verify Discord bot token is correct
