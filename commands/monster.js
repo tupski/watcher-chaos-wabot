@@ -10,7 +10,7 @@ const monsterSchedule = [
     ['Mecha Trojan', 'Voodoo Shaman'], // Day 5 - June 13, 2025
     ['Saberfang', 'Gryphon'],          // Day 6 - June 14, 2025
     ['Necrosis', 'Gawrilla'],          // Day 7 - June 15, 2025
-    ['Bon Apetti', 'Noceros'],         // Day 8 - June 16, 2025
+    ['Bon Appeti', 'Noceros'],         // Day 8 - June 16, 2025
     ['Terrorthorn', 'Tidal Titan'],    // Day 9 - June 17, 2025
     ['Frostwing', 'Blackwing'],        // Day 10 - June 18, 2025
     ['Serpent Gladiator', 'Cottageroar'] // Day 11 - June 19, 2025
