@@ -78,7 +78,14 @@ async function testPaymentFixes() {
     const parts = webhookData.external_id.split('_');
     if (parts.length >= 2) {
         const groupId = parts[1] + '@g.us';
-        const duration = parts[0] === 'PROMO' ? '30' : '180'; // Based on amount
+        // Use proper duration mapping based on amount
+        function getDurationFromAmount(amount) {
+            const amountToDuration = {
+                2000: '1', 12000: '7', 50000: '30', 500000: '180', 950000: '365'
+            };
+            return amountToDuration[amount] || '7';
+        }
+        const duration = getDurationFromAmount(webhookData.amount); // 500000 = 180 days
         const ownerContactId = 'unknown@c.us';
         
         console.log('✅ Parsed from external_id:', {

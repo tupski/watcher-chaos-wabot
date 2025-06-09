@@ -81,7 +81,14 @@ async function testOwnerInfoFixes() {
         const parts = webhookData1.external_id.split('_');
         if (parts.length >= 2) {
             groupId = parts[1] + '@g.us';
-            duration = parts[0] === 'PROMO' ? '30' : '7';
+            // Use proper duration mapping based on amount
+            function getDurationFromAmount(amount) {
+                const amountToDuration = {
+                    2000: '1', 12000: '7', 50000: '30', 500000: '180', 950000: '365'
+                };
+                return amountToDuration[amount] || '7'; // fallback to 7 days
+            }
+            duration = getDurationFromAmount(12000); // Assume 12000 for test
             ownerContactId = 'unknown@c.us';
             console.log('✅ Parsed from external_id:', { groupId, duration, ownerContactId });
         }

@@ -82,14 +82,10 @@ router.post('/webhook/invoice', async (req, res) => {
             const parts = orderId.split('_');
             if (parts.length >= 2) {
                 groupId = parts[1] + '@g.us';
-                // Default duration based on order type
-                if (parts[0] === 'PROMO') {
-                    duration = '30'; // Default promo duration
-                } else {
-                    duration = '7'; // Default duration
-                }
+                // Determine duration from amount instead of hardcoded values
+                duration = getDurationFromAmount(amount);
                 ownerContactId = 'unknown@c.us';
-                console.log(`[${timestamp}] Parsed from external_id - Group: ${groupId}, Duration: ${duration}`);
+                console.log(`[${timestamp}] Parsed from external_id - Group: ${groupId}, Duration: ${duration} days (from amount: ${amount})`);
             } else {
                 console.error(`[${timestamp}] Cannot parse group info from external_id: ${orderId}`);
                 return res.status(400).json({ error: 'Cannot extract group information' });
@@ -451,7 +447,7 @@ router.post('/v3/succeeded', async (req, res) => {
                         paid_at: new Date().toISOString(),
                         metadata: {
                             group_id: groupId,
-                            duration: parts[0] === 'PROMO' ? '30' : '7', // Default duration
+                            duration: getDurationFromAmount(paymentData.amount), // Calculate from amount
                             owner_id: 'unknown@c.us'
                         }
                     });
@@ -809,6 +805,30 @@ async function sendOwnerConfirmation(ownerContactId, orderId, duration, amount, 
     } catch (error) {
         console.error('Error sending owner confirmation:', error);
     }
+}
+
+// Get duration from amount (for fallback when metadata is missing)
+function getDurationFromAmount(amount) {
+    // Standard pricing mapping
+    const amountToDuration = {
+        2000: '1',      // 1 day
+        12000: '7',     // 1 week
+        50000: '30',    // 1 month
+        500000: '180',  // 6 months
+        950000: '365'   // 1 year
+    };
+
+    // Check exact match first
+    if (amountToDuration[amount]) {
+        return amountToDuration[amount];
+    }
+
+    // For custom/promo prices, estimate based on amount ranges
+    if (amount <= 2500) return '1';        // Around 1 day
+    else if (amount <= 15000) return '7';  // Around 1 week
+    else if (amount <= 60000) return '30'; // Around 1 month
+    else if (amount <= 600000) return '180'; // Around 6 months
+    else return '365';                     // Around 1 year
 }
 
 // Get stored payment data from file

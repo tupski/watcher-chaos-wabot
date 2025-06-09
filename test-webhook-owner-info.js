@@ -31,14 +31,29 @@ async function testWebhookOwnerInfo() {
         const parts = webhookData.external_id.split('_');
         if (parts.length >= 2) {
             groupId = parts[1] + '@g.us';
-            // Determine duration based on amount (since we don't have it in external_id)
-            if (webhookData.amount === 2000) duration = '1';
-            else if (webhookData.amount === 12000) duration = '7';
-            else if (webhookData.amount === 50000) duration = '30';
-            else if (webhookData.amount === 500000) duration = '180';
-            else if (webhookData.amount === 950000) duration = '365';
-            else duration = '7'; // default
-            
+            // Determine duration based on amount (proper mapping)
+            function getDurationFromAmount(amount) {
+                const amountToDuration = {
+                    2000: '1',      // 1 day
+                    12000: '7',     // 1 week
+                    50000: '30',    // 1 month
+                    500000: '180',  // 6 months
+                    950000: '365'   // 1 year
+                };
+
+                if (amountToDuration[amount]) {
+                    return amountToDuration[amount];
+                }
+
+                // For custom/promo prices, estimate based on amount ranges
+                if (amount <= 2500) return '1';
+                else if (amount <= 15000) return '7';
+                else if (amount <= 60000) return '30';
+                else if (amount <= 600000) return '180';
+                else return '365';
+            }
+
+            duration = getDurationFromAmount(webhookData.amount);
             ownerContactId = 'unknown@c.us';
             console.log('✅ Parsed from external_id:', { groupId, duration, ownerContactId, amount: webhookData.amount });
         }
