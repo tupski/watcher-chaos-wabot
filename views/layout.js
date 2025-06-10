@@ -94,39 +94,92 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                 
                 .stat-card {
                     background: white;
-                    border-radius: 10px;
-                    padding: 1.5rem;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    border-left: 4px solid var(--primary-color);
-                    transition: transform 0.2s ease;
+                    border-radius: 8px;
+                    padding: 1rem;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    border-left: 3px solid var(--primary-color);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    height: 100%;
                 }
-                
+
                 .stat-card:hover {
                     transform: translateY(-2px);
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
                 }
-                
+
                 .stat-card .stat-icon {
-                    width: 50px;
-                    height: 50px;
-                    border-radius: 10px;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 8px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 1.5rem;
-                    margin-bottom: 1rem;
+                    font-size: 1.25rem;
+                    margin-bottom: 0.75rem;
                 }
-                
+
                 .stat-card .stat-number {
-                    font-size: 2rem;
-                    font-weight: bold;
+                    font-size: 1.75rem;
+                    font-weight: 700;
                     color: var(--primary-color);
-                    margin: 0;
+                    margin: 0 0 0.25rem 0;
                 }
-                
+
                 .stat-card .stat-label {
                     color: #6c757d;
-                    font-size: 0.9rem;
+                    font-size: 0.875rem;
                     margin: 0;
+                    font-weight: 500;
+                }
+
+                /* Compact cards for all components */
+                .card {
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    border: 1px solid #e9ecef;
+                    margin-bottom: 1rem;
+                }
+
+                .card-header {
+                    padding: 0.75rem 1rem;
+                    background: #f8f9fa;
+                    border-bottom: 1px solid #e9ecef;
+                    border-radius: 8px 8px 0 0;
+                }
+
+                .card-body {
+                    padding: 1rem;
+                }
+
+                /* Mobile responsive adjustments */
+                @media (max-width: 768px) {
+                    .stat-card {
+                        padding: 0.75rem;
+                        margin-bottom: 0.75rem;
+                    }
+
+                    .stat-card .stat-icon {
+                        width: 35px;
+                        height: 35px;
+                        font-size: 1.1rem;
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .stat-card .stat-number {
+                        font-size: 1.5rem;
+                    }
+
+                    .stat-card .stat-label {
+                        font-size: 0.8rem;
+                    }
+
+                    .card-header {
+                        padding: 0.5rem 0.75rem;
+                    }
+
+                    .card-body {
+                        padding: 0.75rem;
+                    }
                 }
                 
                 .card {

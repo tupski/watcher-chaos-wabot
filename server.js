@@ -74,9 +74,14 @@ io.on('connection', (socket) => {
 
 // Root route - redirect based on authentication
 app.get('/', (req, res) => {
+    console.log('Root route accessed, session:', req.session ? 'exists' : 'none');
+    console.log('Authenticated:', req.session ? req.session.authenticated : 'no session');
+
     if (req.session && req.session.authenticated) {
+        console.log('Redirecting to /dashboard');
         res.redirect('/dashboard');
     } else {
+        console.log('Redirecting to /dashboard/login');
         res.redirect('/dashboard/login');
     }
 });

@@ -70,6 +70,12 @@ whatsappClient.on('ready', () => {
     // Set the WhatsApp client for API routes
     setWhatsAppClient(whatsappClient);
     setPaymentWhatsAppClient(whatsappClient);
+
+    // Set client for dashboard routes
+    const dashboardRoutes = require('./routes/dashboard');
+    if (dashboardRoutes.setWhatsAppClientRef) {
+        dashboardRoutes.setWhatsAppClientRef(whatsappClient);
+    }
     console.log('WhatsApp client set for API and payment routes');
 
     // Start monster reset scheduler

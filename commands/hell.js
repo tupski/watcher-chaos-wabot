@@ -23,7 +23,8 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
  * If an event is detected, it calculates the time remaining and formats a message to be sent to WhatsApp groups.
  * It handles errors during message processing and logs any issues encountered.
  */
-const { shouldReceiveHellNotifications, isBotActiveInGroup } = require('../utils/groupSettings');
+const { shouldReceiveHellNotifications, isBotActiveInGroup, updateGroupSettings, getGroupSettings } = require('../utils/groupSettings');
+const { canExecuteAdminCommand, logBotOwnerAction, isBotOwner } = require('../utils/botOwnerUtils');
 
 module.exports = async (whatsappClient, message) => {
     const whatsappGroupIds = process.env.WHATSAPP_GROUP_IDS ? process.env.WHATSAPP_GROUP_IDS.split(',') : [];

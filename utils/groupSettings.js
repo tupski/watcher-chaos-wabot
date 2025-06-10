@@ -130,6 +130,13 @@ async function canExecuteCommand(message, command, client = null) {
         }
 
         if (permission === 'admin') {
+            // Bot owner can override admin restrictions
+            const { isBotOwner: isBotOwnerUtil, canExecuteAdminCommand } = require('./botOwnerUtils');
+            if (isBotOwnerUtil(message.from)) {
+                console.log(`Bot owner ${message.from} executing admin command: ${command}`);
+                return true;
+            }
+
             // Check if user is admin
             const contact = await message.getContact();
 

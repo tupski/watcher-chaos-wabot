@@ -65,6 +65,206 @@ function getRecentActivities() {
     return activities;
 }
 
+// Get recent Hell Events with pagination
+function getRecentHellEventsTable(page = 1) {
+    const limit = 10;
+    const offset = (page - 1) * limit;
+
+    // Sample Hell Events data (in production, this would come from database)
+    const allEvents = [
+        {
+            time: new Date(),
+            event: 'Watcher',
+            eventType: 'watcher',
+            task: 'Kill 500 monsters',
+            points: '2.5K',
+            status: 'sent',
+            sentTo: ['Group A', 'Group B', 'Group C']
+        },
+        {
+            time: new Date(Date.now() - 1800000), // 30 minutes ago
+            event: 'Chaos Dragon',
+            eventType: 'chaos_dragon',
+            task: 'Gather 1M resources',
+            points: '3.2K',
+            status: 'sent',
+            sentTo: ['Group A', 'Group B']
+        },
+        {
+            time: new Date(Date.now() - 3600000), // 1 hour ago
+            event: 'Ancient Core',
+            eventType: 'ancient_core',
+            task: 'Complete 10 quests',
+            points: '1.8K',
+            status: 'filtered',
+            sentTo: []
+        },
+        {
+            time: new Date(Date.now() - 5400000), // 1.5 hours ago
+            event: 'Chaos Core',
+            eventType: 'chaos_core',
+            task: 'Defeat 100 enemies',
+            points: '2.1K',
+            status: 'sent',
+            sentTo: ['Group A']
+        },
+        {
+            time: new Date(Date.now() - 7200000), // 2 hours ago
+            event: 'Yellow Orb',
+            eventType: 'yellow_orb',
+            task: 'Collect 500K gold',
+            points: '1.5K',
+            status: 'filtered',
+            sentTo: []
+        },
+        {
+            time: new Date(Date.now() - 9000000), // 2.5 hours ago
+            event: 'Red Orb',
+            eventType: 'red_orb',
+            task: 'Train 200 troops',
+            points: '1.9K',
+            status: 'sent',
+            sentTo: ['Group B', 'Group C']
+        }
+    ];
+
+    const totalEvents = allEvents.length;
+    const totalPages = Math.ceil(totalEvents / limit);
+    const paginatedEvents = allEvents.slice(offset, offset + limit);
+
+    // Generate event badge based on type
+    function getEventBadge(eventType, eventName) {
+        const badges = {
+            'watcher': 'bg-success',
+            'chaos_dragon': 'bg-danger',
+            'ancient_core': 'bg-primary',
+            'chaos_core': 'bg-info',
+            'yellow_orb': 'bg-warning',
+            'red_orb': 'bg-danger-subtle text-danger'
+        };
+
+        return `<span class="badge ${badges[eventType] || 'bg-secondary'}">${eventName}</span>`;
+    }
+
+    // Generate status button
+    function getStatusButton(status, sentTo, eventId) {
+        if (status === 'sent') {
+            return `
+                <button class="btn btn-sm btn-success" onclick="showSentGroups('${eventId}', '${sentTo.join(', ')}')">
+                    <i class="bi bi-check-circle me-1"></i>Sent
+                </button>
+            `;
+        } else {
+            return `<span class="badge bg-secondary">Filtered</span>`;
+        }
+    }
+
+    // Build table rows
+    let eventRows = '';
+    paginatedEvents.forEach((event, index) => {
+        const eventId = `event_${offset + index}`;
+        eventRows += `
+            <tr>
+                <td>${event.time.toLocaleDateString('id-ID')} ${event.time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
+                <td>${getEventBadge(event.eventType, event.event)}</td>
+                <td>${event.task}</td>
+                <td>${event.points}</td>
+                <td>${getStatusButton(event.status, event.sentTo, eventId)}</td>
+            </tr>
+        `;
+    });
+
+    // Generate pagination
+    let paginationHtml = '';
+    if (totalPages > 1) {
+        paginationHtml = '<nav aria-label="Hell Events pagination"><ul class="pagination justify-content-center">';
+
+        // Previous button
+        if (page > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${page - 1}">‹</a></li>`;
+        }
+
+        // Page numbers (show max 5 pages)
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(totalPages, page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === page) {
+                paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+            } else {
+                paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${i}">${i}</a></li>`;
+            }
+        }
+
+        // Next button
+        if (page < totalPages) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${page + 1}">›</a></li>`;
+        }
+
+        paginationHtml += '</ul></nav>';
+    }
+
+    return `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Event</th>
+                        <th>Task</th>
+                        <th>Points</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${eventRows}
+                </tbody>
+            </table>
+        </div>
+
+        ${paginationHtml}
+
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Events are automatically detected from Discord and sent to configured groups
+            </small>
+        </div>
+
+        <!-- Modal for showing sent groups -->
+        <div class="modal fade" id="sentGroupsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Event Sent To Groups</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="sentGroupsContent">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function showSentGroups(eventId, groups) {
+                document.getElementById('sentGroupsContent').innerHTML =
+                    '<p><strong>This Hell Event was sent to:</strong></p><ul>' +
+                    groups.split(', ').map(group => '<li>' + group + '</li>').join('') +
+                    '</ul>';
+
+                new bootstrap.Modal(document.getElementById('sentGroupsModal')).show();
+            }
+
+            function refreshEvents() {
+                location.reload();
+            }
+        </script>
+    `;
+}
+
 // Login page
 router.get('/login', redirectIfAuthenticated, (req, res) => {
     const error = req.query.error;
@@ -220,7 +420,7 @@ router.get('/', checkSession, (req, res) => {
         <!-- Statistics Cards -->
         <div class="row mb-4">
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card">
+                <div class="stat-card clickable-card" onclick="window.location.href='/dashboard/groups'">
                     <div class="stat-icon bg-primary text-white">
                         <i class="bi bi-people"></i>
                     </div>
@@ -229,7 +429,7 @@ router.get('/', checkSession, (req, res) => {
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card">
+                <div class="stat-card clickable-card" onclick="window.location.href='/dashboard/groups'">
                     <div class="stat-icon bg-success text-white">
                         <i class="bi bi-check-circle"></i>
                     </div>
@@ -238,7 +438,7 @@ router.get('/', checkSession, (req, res) => {
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card">
+                <div class="stat-card clickable-card" onclick="window.location.href='/dashboard/groups'">
                     <div class="stat-icon bg-warning text-white">
                         <i class="bi bi-credit-card"></i>
                     </div>
@@ -247,7 +447,7 @@ router.get('/', checkSession, (req, res) => {
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card">
+                <div class="stat-card clickable-card" onclick="window.location.href='/dashboard/groups'">
                     <div class="stat-icon bg-info text-white">
                         <i class="bi bi-gift"></i>
                     </div>
@@ -260,7 +460,7 @@ router.get('/', checkSession, (req, res) => {
         <!-- Quick Actions -->
         <div class="row mb-4">
             <div class="col-md-6 mb-3">
-                <div class="card">
+                <div class="card clickable-card" onclick="window.location.href='/dashboard/groups'">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
                     </div>
@@ -280,7 +480,7 @@ router.get('/', checkSession, (req, res) => {
                 </div>
             </div>
             <div class="col-md-6 mb-3">
-                <div class="card">
+                <div class="card clickable-card" onclick="window.location.href='/dashboard/statistics'">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>System Status</h5>
                     </div>
@@ -367,6 +567,7 @@ router.get('/commands', checkSession, (req, res) => {
                                         <th>Command</th>
                                         <th>Description</th>
                                         <th>Access Level</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -379,6 +580,11 @@ router.get('/commands', checkSession, (req, res) => {
                                                     <i class="bi bi-${cmd.adminOnly ? 'shield-lock' : 'people'} me-1"></i>
                                                     ${cmd.adminOnly ? 'Admin Only' : 'All Users'}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editCommandMessage('${cmd.command}')">
+                                                    <i class="bi bi-pencil me-1"></i>Edit Message
+                                                </button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -453,14 +659,150 @@ router.get('/commands', checkSession, (req, res) => {
                 </div>
             </div>
         </div>
+
+        <!-- Command Message Edit Modal -->
+        <div class="modal fade" id="commandMessageModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Command Message</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="commandMessageForm">
+                            <div class="mb-3">
+                                <label for="commandName" class="form-label">Command</label>
+                                <input type="text" class="form-control" id="commandName" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label for="commandMessage" class="form-label">Response Message</label>
+                                <textarea class="form-control" id="commandMessage" rows="6"
+                                          placeholder="Enter the message that bot will send when this command is used..."></textarea>
+                                <div class="form-text">
+                                    You can use variables like {user}, {group}, {time}, etc.
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="commandEnabled" class="form-label">Status</label>
+                                <select class="form-select" id="commandEnabled">
+                                    <option value="true">Enabled</option>
+                                    <option value="false">Disabled</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveCommandMessage()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Sample command messages (in production, load from database)
+            const commandMessages = {
+                '!ping': 'Pong! Bot is online and responding.',
+                '!help': 'Available commands: !ping, !hell, !monster, !tagall, !rent',
+                '!hell': 'Current Hell Event information will be displayed here.',
+                '!monster': 'Current monster rotation information.',
+                '!tagall': 'Tagging all group members...',
+                '!rent': 'Bot rental information and pricing.',
+                '!ai': 'AI assistant is ready to help you!'
+            };
+
+            function editCommandMessage(command) {
+                document.getElementById('commandName').value = command;
+                document.getElementById('commandMessage').value = commandMessages[command] || '';
+                document.getElementById('commandEnabled').value = 'true';
+
+                new bootstrap.Modal(document.getElementById('commandMessageModal')).show();
+            }
+
+            function saveCommandMessage() {
+                const command = document.getElementById('commandName').value;
+                const message = document.getElementById('commandMessage').value;
+                const enabled = document.getElementById('commandEnabled').value;
+
+                // In production, save to database via API
+                commandMessages[command] = message;
+
+                // Close modal and show success message
+                bootstrap.Modal.getInstance(document.getElementById('commandMessageModal')).hide();
+
+                // Show success toast or alert
+                alert('Command message updated successfully!');
+            }
+        </script>
     `;
 
     res.send(createLayout('Command List', content, 'commands', req.session.username));
 });
 
 // Settings page
-router.get('/settings', checkSession, (req, res) => {
+router.get('/settings', checkSession, async (req, res) => {
     const { createLayout } = require('../views/layout');
+
+    try {
+        // Get joined groups for WhatsApp Groups section
+        const joinedGroups = await getJoinedGroups(whatsappClientRef);
+        const configuredGroupIds = process.env.WHATSAPP_GROUP_IDS ?
+            process.env.WHATSAPP_GROUP_IDS.split(',').map(id => id.trim()) : [];
+
+        // Build WhatsApp groups checklist table
+        let whatsappGroupsTable = '';
+        if (joinedGroups.length > 0) {
+            whatsappGroupsTable = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th width="50">
+                                    <input type="checkbox" id="selectAll" onchange="toggleAllGroups(this)">
+                                </th>
+                                <th>Group Name</th>
+                                <th>Members</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${joinedGroups.map(group => {
+                                const isConfigured = configuredGroupIds.includes(group.id);
+                                return `
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="whatsapp_groups" value="${group.id}"
+                                                   ${isConfigured ? 'checked' : ''} class="group-checkbox">
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>${group.name}</strong>
+                                                <small class="d-block text-muted">${group.id}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">${group.participantCount} members</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge ${isConfigured ? 'bg-success' : 'bg-secondary'}">
+                                                ${isConfigured ? 'Configured' : 'Not Configured'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            whatsappGroupsTable = `
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    No WhatsApp groups found. Make sure the bot has joined some groups.
+                </div>
+            `;
+        }
 
     const content = `
         <div class="row">
@@ -493,12 +835,11 @@ router.get('/settings', checkSession, (req, res) => {
                                 </div>
 
                                 <div class="col-12 mb-3">
-                                    <label for="whatsapp_groups" class="form-label">
-                                        <i class="bi bi-whatsapp me-2"></i>WhatsApp Group IDs
+                                    <label class="form-label">
+                                        <i class="bi bi-whatsapp me-2"></i>WhatsApp Groups Configuration
                                     </label>
-                                    <textarea name="whatsapp_groups" id="whatsapp_groups" class="form-control" rows="3"
-                                              placeholder="Group1@g.us,Group2@g.us,Group3@g.us">${process.env.WHATSAPP_GROUP_IDS || ''}</textarea>
-                                    <div class="form-text">Comma-separated list of WhatsApp group IDs to send notifications</div>
+                                    <div class="form-text mb-3">Select groups to receive Hell Event notifications</div>
+                                    ${whatsappGroupsTable}
                                 </div>
 
                                 <div class="col-md-6 mb-3">
@@ -598,14 +939,51 @@ router.get('/settings', checkSession, (req, res) => {
                 </div>
             </div>
         </div>
+
+        <script>
+            function toggleAllGroups(selectAllCheckbox) {
+                const checkboxes = document.querySelectorAll('.group-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            }
+
+            // Update form submission to handle checkboxes
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const checkedGroups = Array.from(document.querySelectorAll('.group-checkbox:checked'))
+                    .map(checkbox => checkbox.value);
+
+                // Create hidden input for selected groups
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'whatsapp_groups_list';
+                hiddenInput.value = checkedGroups.join(',');
+                this.appendChild(hiddenInput);
+            });
+        </script>
     `;
 
-    res.send(createLayout('Bot Settings', content, 'settings', req.session.username));
+        res.send(createLayout('Bot Settings', content, 'settings', req.session.username));
+
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        const content = `
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Error loading settings. Please try again.
+                    </div>
+                </div>
+            </div>
+        `;
+        res.send(createLayout('Bot Settings', content, 'settings', req.session.username));
+    }
 });
 
 // Update global settings
 router.post('/update-global-settings', checkSession, (req, res) => {
-    const { only_watcher_chaos, discord_channel, whatsapp_groups } = req.body;
+    const { only_watcher_chaos, discord_channel, whatsapp_groups_list, bot_owner, timezone_offset, ai_provider, ai_api_key } = req.body;
     
     // Update .env file (in production, you might want to use a database)
     const fs = require('fs');
@@ -630,21 +1008,57 @@ router.post('/update-global-settings', checkSession, (req, res) => {
         }
         
         // Update WHATSAPP_GROUP_IDS
-        if (whatsapp_groups) {
+        if (whatsapp_groups_list) {
             envContent = envContent.replace(
                 /WHATSAPP_GROUP_IDS=.*/,
-                `WHATSAPP_GROUP_IDS=${whatsapp_groups}`
+                `WHATSAPP_GROUP_IDS=${whatsapp_groups_list}`
             );
         }
-        
+
+        // Update BOT_OWNER_NUMBER
+        if (bot_owner) {
+            envContent = envContent.replace(
+                /BOT_OWNER_NUMBER=.*/,
+                `BOT_OWNER_NUMBER=${bot_owner}`
+            );
+        }
+
+        // Update TIMEZONE_OFFSET
+        if (timezone_offset) {
+            envContent = envContent.replace(
+                /TIMEZONE_OFFSET=.*/,
+                `TIMEZONE_OFFSET=${timezone_offset}`
+            );
+        }
+
+        // Update AI_PROVIDER
+        if (ai_provider) {
+            envContent = envContent.replace(
+                /AI_PROVIDER=.*/,
+                `AI_PROVIDER=${ai_provider}`
+            );
+        }
+
+        // Update AI_API_KEY
+        if (ai_api_key && ai_api_key !== '••••••••••••••••') {
+            envContent = envContent.replace(
+                /AI_API_KEY=.*/,
+                `AI_API_KEY=${ai_api_key}`
+            );
+        }
+
         fs.writeFileSync(envPath, envContent);
-        
+
         // Update process.env
         process.env.ONLY_WATCHER_CHAOS = only_watcher_chaos;
         if (discord_channel) process.env.DISCORD_CHANNEL_ID = discord_channel;
-        if (whatsapp_groups) process.env.WHATSAPP_GROUP_IDS = whatsapp_groups;
+        if (whatsapp_groups_list) process.env.WHATSAPP_GROUP_IDS = whatsapp_groups_list;
+        if (bot_owner) process.env.BOT_OWNER_NUMBER = bot_owner;
+        if (timezone_offset) process.env.TIMEZONE_OFFSET = timezone_offset;
+        if (ai_provider) process.env.AI_PROVIDER = ai_provider;
+        if (ai_api_key && ai_api_key !== '••••••••••••••••') process.env.AI_API_KEY = ai_api_key;
         
-        res.redirect('/dashboard?success=Settings updated successfully');
+        res.redirect('/dashboard/settings?success=Settings updated successfully');
     } catch (error) {
         console.error('Error updating settings:', error);
         res.redirect('/dashboard?error=Failed to update settings');
@@ -1114,52 +1528,7 @@ router.get('/hell-events', checkSession, (req, res) => {
                         </button>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Time</th>
-                                        <th>Event</th>
-                                        <th>Task</th>
-                                        <th>Duration</th>
-                                        <th>Points</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="eventsTable">
-                                    <tr>
-                                        <td>${new Date().toLocaleString()}</td>
-                                        <td><span class="badge bg-success">Watcher</span></td>
-                                        <td>Kill 500 monsters</td>
-                                        <td>45 minutes</td>
-                                        <td>2.5K</td>
-                                        <td><span class="badge bg-success">Sent</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>${new Date(Date.now() - 3600000).toLocaleString()}</td>
-                                        <td><span class="badge bg-warning">Ancient Core</span></td>
-                                        <td>Complete 10 quests</td>
-                                        <td>60 minutes</td>
-                                        <td>1.8K</td>
-                                        <td><span class="badge bg-secondary">Filtered</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>${new Date(Date.now() - 7200000).toLocaleString()}</td>
-                                        <td><span class="badge bg-success">Chaos Dragon</span></td>
-                                        <td>Gather 1M resources</td>
-                                        <td>30 minutes</td>
-                                        <td>3.2K</td>
-                                        <td><span class="badge bg-success">Sent</span></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="text-center mt-3">
-                            <small class="text-muted">
-                                <i class="bi bi-info-circle me-1"></i>
-                                Events are automatically detected from Discord and sent to configured groups
-                            </small>
-                        </div>
+                        ${getRecentHellEventsTable(req.query.page)}
                     </div>
                 </div>
             </div>
@@ -1184,36 +1553,41 @@ router.get('/hell-events', checkSession, (req, res) => {
 });
 
 // Group management page with pagination
-router.get('/groups', checkSession, (req, res) => {
+router.get('/groups', checkSession, async (req, res) => {
     const { createLayout } = require('../views/layout');
-    const allGroups = getAllGroupsSettings();
-    const page = parseInt(req.query.page) || 1;
-    const limit = 10; // Groups per page
-    const offset = (page - 1) * limit;
+    const { getConfiguredJoinedGroups } = require('../utils/whatsappUtils');
 
-    const groupEntries = Object.entries(allGroups);
-    const totalGroups = groupEntries.length;
-    const totalPages = Math.ceil(totalGroups / limit);
-    const paginatedGroups = groupEntries.slice(offset, offset + limit);
+    try {
+        // Get only joined groups (filters out test groups and non-joined groups)
+        const joinedGroups = await getConfiguredJoinedGroups(whatsappClientRef);
 
-    // Build table rows for paginated groups
-    let groupRows = '';
-    for (const [groupId, settings] of paginatedGroups) {
-        const isActive = settings.botEnabled !== false;
-        const isRent = settings.rentMode;
-        const hellNotifications = settings.hellNotifications || 'all';
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10; // Groups per page
+        const offset = (page - 1) * limit;
 
-        groupRows += `
-            <tr>
-                <td>
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-people me-2 text-primary"></i>
-                        <div>
-                            <strong>${groupId.length > 30 ? groupId.substring(0, 30) + '...' : groupId}</strong>
-                            <small class="d-block text-muted">${groupId}</small>
+        const totalGroups = joinedGroups.length;
+        const totalPages = Math.ceil(totalGroups / limit);
+        const paginatedGroups = joinedGroups.slice(offset, offset + limit);
+
+        // Build table rows for paginated groups
+        let groupRows = '';
+        for (const group of paginatedGroups) {
+            const isActive = group.botEnabled;
+            const isRent = group.rentMode;
+            const hellNotifications = group.hellNotifications;
+
+            groupRows += `
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-people me-2 text-primary"></i>
+                            <div>
+                                <strong>${group.name}</strong>
+                                <small class="d-block text-muted">${group.id}</small>
+                                <small class="d-block text-info">${group.participantCount} members</small>
+                            </div>
                         </div>
-                    </div>
-                </td>
+                    </td>
                 <td>
                     <span class="badge ${isActive ? 'bg-success' : 'bg-danger'}">
                         <i class="bi bi-${isActive ? 'check-circle' : 'x-circle'} me-1"></i>
@@ -1227,25 +1601,30 @@ router.get('/groups', checkSession, (req, res) => {
                     </span>
                     ${isRent && settings.rentExpiry ? `<small class="d-block text-muted">Expires: ${new Date(settings.rentExpiry).toLocaleDateString()}</small>` : ''}
                 </td>
-                <td>
-                    <form method="POST" action="/dashboard/update-group-settings" class="d-inline">
-                        <input type="hidden" name="groupId" value="${groupId}">
-                        <select name="hellNotifications" class="form-select form-select-sm" onchange="this.form.submit()">
-                            <option value="all" ${hellNotifications === 'all' ? 'selected' : ''}>All Events</option>
-                            <option value="watcherchaos" ${hellNotifications === 'watcherchaos' ? 'selected' : ''}>Watcher & Chaos</option>
-                            <option value="off" ${hellNotifications === 'off' ? 'selected' : ''}>Disabled</option>
-                        </select>
-                    </form>
-                </td>
-                <td>
-                    <form method="POST" action="/dashboard/toggle-bot" class="d-inline">
-                        <input type="hidden" name="groupId" value="${groupId}">
-                        <button type="submit" class="btn btn-sm ${isActive ? 'btn-outline-danger' : 'btn-outline-success'}">
-                            <i class="bi bi-${isActive ? 'stop' : 'play'} me-1"></i>
-                            ${isActive ? 'Disable' : 'Enable'}
+                    <td>
+                        <form method="POST" action="/dashboard/update-group-settings" class="d-inline">
+                            <input type="hidden" name="groupId" value="${group.id}">
+                            <select name="hellNotifications" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="all" ${hellNotifications === 'all' ? 'selected' : ''}>All Events</option>
+                                <option value="watcherchaos" ${hellNotifications === 'watcherchaos' ? 'selected' : ''}>Watcher & Chaos</option>
+                                <option value="off" ${hellNotifications === 'off' ? 'selected' : ''}>Disabled</option>
+                            </select>
+                        </form>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info" onclick="manageCommands('${group.id}', '${group.name}')">
+                            <i class="bi bi-gear me-1"></i>Manage
                         </button>
-                    </form>
-                </td>
+                    </td>
+                    <td>
+                        <form method="POST" action="/dashboard/toggle-bot" class="d-inline">
+                            <input type="hidden" name="groupId" value="${group.id}">
+                            <button type="submit" class="btn btn-sm ${isActive ? 'btn-outline-danger' : 'btn-outline-success'}">
+                                <i class="bi bi-${isActive ? 'stop' : 'play'} me-1"></i>
+                                ${isActive ? 'Disable' : 'Enable'}
+                            </button>
+                        </form>
+                    </td>
             </tr>
         `;
     }
@@ -1315,25 +1694,25 @@ router.get('/groups', checkSession, (req, res) => {
                     <div class="stat-icon bg-success text-white">
                         <i class="bi bi-check-circle"></i>
                     </div>
-                    <h3 class="stat-number">${Object.values(allGroups).filter(s => s.botEnabled !== false).length}</h3>
+                    <h3 class="stat-number">${joinedGroups.filter(g => g.botEnabled).length}</h3>
                     <p class="stat-label">Active Groups</p>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card">
+                <div class="stat-card clickable-card" onclick="window.location.href='/dashboard/groups'">
                     <div class="stat-icon bg-warning text-white">
                         <i class="bi bi-credit-card"></i>
                     </div>
-                    <h3 class="stat-number">${Object.values(allGroups).filter(s => s.rentMode).length}</h3>
+                    <h3 class="stat-number">${joinedGroups.filter(g => g.rentMode).length}</h3>
                     <p class="stat-label">Rent Groups</p>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card">
+                <div class="stat-card clickable-card" onclick="window.location.href='/dashboard/groups'">
                     <div class="stat-icon bg-info text-white">
                         <i class="bi bi-gift"></i>
                     </div>
-                    <h3 class="stat-number">${Object.values(allGroups).filter(s => s.botEnabled !== false && !s.rentMode).length}</h3>
+                    <h3 class="stat-number">${joinedGroups.filter(g => g.botEnabled && !g.rentMode).length}</h3>
                     <p class="stat-label">Free Groups</p>
                 </div>
             </div>
@@ -1343,10 +1722,39 @@ router.get('/groups', checkSession, (req, res) => {
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Group Management</h5>
-                        <div>
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="bi bi-people me-2"></i>Group Management</h5>
                             <small class="text-muted">Page ${page} of ${totalPages} (${totalGroups} total groups)</small>
+                        </div>
+
+                        <!-- Filter Controls -->
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" id="groupFilter" placeholder="Search groups...">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="statusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="active">Active Only</option>
+                                    <option value="inactive">Inactive Only</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="typeFilter">
+                                    <option value="">All Types</option>
+                                    <option value="rent">Rent Groups</option>
+                                    <option value="free">Free Groups</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="clearFilters()">
+                                    <i class="bi bi-x-circle me-1"></i>Clear
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -1365,6 +1773,7 @@ router.get('/groups', checkSession, (req, res) => {
                                             <th>Status</th>
                                             <th>Type</th>
                                             <th>Hell Notifications</th>
+                                            <th>Commands</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -1444,10 +1853,166 @@ router.get('/groups', checkSession, (req, res) => {
                 // You can implement bulk actions here
                 alert('Bulk action "' + action + '" would be applied to all groups');
             }
+
+            // Filter functionality
+            function filterTable() {
+                const searchTerm = document.getElementById('groupFilter').value.toLowerCase();
+                const statusFilter = document.getElementById('statusFilter').value;
+                const typeFilter = document.getElementById('typeFilter').value;
+                const rows = document.querySelectorAll('tbody tr');
+
+                rows.forEach(row => {
+                    const groupName = row.cells[0].textContent.toLowerCase();
+                    const statusBadge = row.cells[1].querySelector('.badge');
+                    const typeBadge = row.cells[2].querySelector('.badge');
+
+                    const matchesSearch = groupName.includes(searchTerm);
+                    const matchesStatus = !statusFilter ||
+                        (statusFilter === 'active' && statusBadge.classList.contains('bg-success')) ||
+                        (statusFilter === 'inactive' && !statusBadge.classList.contains('bg-success'));
+                    const matchesType = !typeFilter ||
+                        (typeFilter === 'rent' && typeBadge.textContent.includes('Rent')) ||
+                        (typeFilter === 'free' && typeBadge.textContent.includes('Free'));
+
+                    row.style.display = matchesSearch && matchesStatus && matchesType ? '' : 'none';
+                });
+            }
+
+            function clearFilters() {
+                document.getElementById('groupFilter').value = '';
+                document.getElementById('statusFilter').value = '';
+                document.getElementById('typeFilter').value = '';
+                filterTable();
+            }
+
+            // Add event listeners
+            document.addEventListener('DOMContentLoaded', function() {
+                document.getElementById('groupFilter').addEventListener('input', filterTable);
+                document.getElementById('statusFilter').addEventListener('change', filterTable);
+                document.getElementById('typeFilter').addEventListener('change', filterTable);
+            });
+
+            // Command management
+            function manageCommands(groupId, groupName) {
+                // Create modal content
+                const modalContent = \`
+                    <div class="modal fade" id="commandsModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Manage Commands - \${groupName}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted mb-3">Select which commands are allowed in this group:</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Basic Commands</h6>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_ping" checked>
+                                                <label class="form-check-label" for="cmd_ping">!ping</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_help" checked>
+                                                <label class="form-check-label" for="cmd_help">!help</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_cmd" checked>
+                                                <label class="form-check-label" for="cmd_cmd">!cmd</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Game Commands</h6>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_hell" checked>
+                                                <label class="form-check-label" for="cmd_hell">!hell</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_monster" checked>
+                                                <label class="form-check-label" for="cmd_monster">!monster</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Group Management</h6>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_tagall">
+                                                <label class="form-check-label" for="cmd_tagall">!tagall (Admin)</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_permission">
+                                                <label class="form-check-label" for="cmd_permission">!permission (Admin)</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Other Commands</h6>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_ai" checked>
+                                                <label class="form-check-label" for="cmd_ai">!ai</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="cmd_rent" checked>
+                                                <label class="form-check-label" for="cmd_rent">!rent</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-primary" onclick="saveCommandPermissions('\${groupId}')">Save Changes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                \`;
+
+                // Remove existing modal if any
+                const existingModal = document.getElementById('commandsModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+
+                // Add modal to body
+                document.body.insertAdjacentHTML('beforeend', modalContent);
+
+                // Show modal
+                new bootstrap.Modal(document.getElementById('commandsModal')).show();
+            }
+
+            function saveCommandPermissions(groupId) {
+                const permissions = {};
+                const checkboxes = document.querySelectorAll('#commandsModal .form-check-input');
+
+                checkboxes.forEach(checkbox => {
+                    const command = checkbox.id.replace('cmd_', '');
+                    permissions[command] = checkbox.checked;
+                });
+
+                // In production, save to database via API
+                console.log('Saving permissions for group', groupId, permissions);
+
+                // Close modal and show success
+                bootstrap.Modal.getInstance(document.getElementById('commandsModal')).hide();
+                alert('Command permissions updated successfully!');
+            }
         </script>
     `;
 
-    res.send(createLayout('Group Management', content, 'groups', req.session.username));
+        res.send(createLayout('Group Management', content, 'groups', req.session.username));
+
+    } catch (error) {
+        console.error('Error loading groups:', error);
+        const content = `
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Error loading groups. WhatsApp client may not be ready.
+                    </div>
+                </div>
+            </div>
+        `;
+        res.send(createLayout('Group Management', content, 'groups', req.session.username));
+    }
 });
 
 // Update group settings

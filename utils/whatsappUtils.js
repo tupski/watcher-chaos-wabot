@@ -17,10 +17,15 @@ async function getJoinedGroups(whatsappClient) {
         
         for (const group of groups) {
             // Skip test groups and invalid groups
-            if (group.name && 
-                !group.name.toLowerCase().includes('test') && 
-                !group.name.toLowerCase().includes('testing')) {
-                
+            const groupName = group.name ? group.name.toLowerCase() : '';
+            const isTestGroup = groupName.includes('test') ||
+                               groupName.includes('testing') ||
+                               groupName.includes('tes ') ||
+                               groupName.includes('coba') ||
+                               groupName.includes('trial') ||
+                               groupName.includes('demo');
+
+            if (group.name && !isTestGroup && group.name.trim() !== '') {
                 joinedGroups.push({
                     id: group.id._serialized,
                     name: group.name,
