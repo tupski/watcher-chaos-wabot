@@ -1040,6 +1040,70 @@ router.get('/bot-profile', checkSession, (req, res) => {
 
 // Commands page
 router.get('/commands', checkSession, (req, res) => {
+    const { getAllCommands } = require('../utils/whatsappUtils');
+    const { getAllCommands: getCommandDatabase } = require('../utils/commandDatabase');
+
+    // Get all commands from both sources
+    const categorizedCommands = getAllCommands();
+    const commandDatabase = getCommandDatabase();
+
+    let commandsHtml = '';
+
+    // Build commands table with categories
+    Object.keys(categorizedCommands).forEach(category => {
+        const commands = categorizedCommands[category];
+
+        commands.forEach(cmd => {
+            const commandName = cmd.command.replace('!', '').split(' ')[0];
+            const dbCommand = commandDatabase[commandName] || {};
+
+            const accessLevel = dbCommand.accessLevel || (cmd.adminOnly ? 'admin' : 'all');
+            const enabled = dbCommand.enabled !== false;
+            const description = dbCommand.description || cmd.description;
+            const message = dbCommand.message || '';
+
+            let accessBadge = '';
+            switch(accessLevel) {
+                case 'all':
+                    accessBadge = '<span class="badge badge-success">All Users</span>';
+                    break;
+                case 'member':
+                    accessBadge = '<span class="badge badge-info">Members</span>';
+                    break;
+                case 'admin':
+                    accessBadge = '<span class="badge badge-warning">Admin</span>';
+                    break;
+                default:
+                    accessBadge = '<span class="badge badge-danger">Bot Owner</span>';
+            }
+
+            const statusBadge = enabled ?
+                '<span class="badge badge-success">Active</span>' :
+                '<span class="badge badge-secondary">Disabled</span>';
+
+            commandsHtml += `
+                <tr data-category="${category}">
+                    <td>
+                        <code>${cmd.command}</code>
+                        <br><small class="text-muted">${category}</small>
+                    </td>
+                    <td>${description}</td>
+                    <td>${accessBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('${commandName}', '${description}', '${accessLevel}', '${message.replace(/'/g, "\\'")}', ${enabled})" title="Edit Command">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-${enabled ? 'danger' : 'success'}" onclick="toggleCommand('${commandName}', ${enabled})" title="${enabled ? 'Disable' : 'Enable'} Command">
+                                <i class="fas fa-power-off"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+    });
     const content = `
         <div class="row">
             <div class="col-12">
@@ -1050,9 +1114,14 @@ router.get('/commands', checkSession, (req, res) => {
                             Command List
                         </h3>
                         <div class="card-tools">
-                            <button class="btn btn-primary btn-sm" onclick="addNewCommand()">
-                                <i class="fas fa-plus mr-1"></i>Add Command
-                            </button>
+                            <div class="input-group input-group-sm" style="width: 200px;">
+                                <select class="form-control" id="categoryFilter" onchange="filterByCategory()">
+                                    <option value="">All Categories</option>
+                                    ${Object.keys(categorizedCommands).map(category =>
+                                        `<option value="${category}">${category}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -1068,76 +1137,7 @@ router.get('/commands', checkSession, (req, res) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td><code>!hell</code></td>
-                                        <td>Show current Hell Event information</td>
-                                        <td><span class="badge badge-success">All Users</span></td>
-                                        <td><span class="badge badge-success">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('hell')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('hell')">
-                                                <i class="fas fa-power-off"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>!monster</code></td>
-                                        <td>Show monster rotation schedule</td>
-                                        <td><span class="badge badge-success">All Users</span></td>
-                                        <td><span class="badge badge-success">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('monster')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('monster')">
-                                                <i class="fas fa-power-off"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>!help</code></td>
-                                        <td>Show available commands</td>
-                                        <td><span class="badge badge-success">All Users</span></td>
-                                        <td><span class="badge badge-success">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('help')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('help')">
-                                                <i class="fas fa-power-off"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>!rent</code></td>
-                                        <td>Bot rental management</td>
-                                        <td><span class="badge badge-warning">Admin</span></td>
-                                        <td><span class="badge badge-success">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('rent')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('rent')">
-                                                <i class="fas fa-power-off"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>!restart</code></td>
-                                        <td>Restart bot system</td>
-                                        <td><span class="badge badge-danger">Bot Owner</span></td>
-                                        <td><span class="badge badge-success">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('restart')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('restart')">
-                                                <i class="fas fa-power-off"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    ${commandsHtml}
                                 </tbody>
                             </table>
                         </div>
@@ -1177,10 +1177,18 @@ router.get('/commands', checkSession, (req, res) => {
                             </div>
                             <div class="form-group">
                                 <label for="commandMessage">Response Message</label>
-                                <textarea class="form-control" id="commandMessage" rows="5" placeholder="Enter the response message for this command..."></textarea>
+                                <textarea class="form-control" id="commandMessage" rows="6" placeholder="Enter the response message for this command..."></textarea>
                                 <small class="form-text text-muted">
-                                    You can use WhatsApp formatting: *bold*, _italic_, ~strikethrough~, \`code\`
+                                    <strong>WhatsApp formatting:</strong> *bold*, _italic_, ~strikethrough~, \`code\`<br>
+                                    <strong>Variables:</strong> {uptime}, {botOwner}, {groupName}, {userName}, {timestamp}, {aiResponse}
                                 </small>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="insertVariable('{uptime}')">Uptime</button>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="insertVariable('{botOwner}')">Bot Owner</button>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="insertVariable('{groupName}')">Group Name</button>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="insertVariable('{userName}')">User Name</button>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="insertVariable('{timestamp}')">Timestamp</button>
+                                </div>
                             </div>
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="commandEnabled">
@@ -1210,49 +1218,13 @@ router.get('/commands', checkSession, (req, res) => {
                 });
             });
 
-            function editCommand(commandName) {
-                // Set command name
+            function editCommand(commandName, description, accessLevel, message, enabled) {
+                // Set command data
                 document.getElementById('commandName').value = commandName;
-
-                // Load command data (this would normally come from an API)
-                const commandData = {
-                    'hell': {
-                        description: 'Show current Hell Event information',
-                        access: 'all',
-                        message: 'Current Hell Event information will be displayed here.',
-                        enabled: true
-                    },
-                    'monster': {
-                        description: 'Show monster rotation schedule',
-                        access: 'all',
-                        message: 'Monster rotation schedule will be displayed here.',
-                        enabled: true
-                    },
-                    'help': {
-                        description: 'Show available commands',
-                        access: 'all',
-                        message: 'Available commands:\\n!hell - Hell Event info\\n!monster - Monster rotation\\n!help - This help',
-                        enabled: true
-                    },
-                    'rent': {
-                        description: 'Bot rental management',
-                        access: 'admin',
-                        message: 'Bot rental management commands.',
-                        enabled: true
-                    },
-                    'restart': {
-                        description: 'Restart bot system',
-                        access: 'owner',
-                        message: 'Bot will restart in 30 seconds...',
-                        enabled: true
-                    }
-                };
-
-                const data = commandData[commandName] || {};
-                document.getElementById('commandDescription').value = data.description || '';
-                document.getElementById('commandAccess').value = data.access || 'all';
-                document.getElementById('commandMessage').value = data.message || '';
-                document.getElementById('commandEnabled').checked = data.enabled || false;
+                document.getElementById('commandDescription').value = description || '';
+                document.getElementById('commandAccess').value = accessLevel || 'all';
+                document.getElementById('commandMessage').value = message || '';
+                document.getElementById('commandEnabled').checked = enabled;
 
                 $('#commandEditModal').modal('show');
             }
@@ -1260,36 +1232,94 @@ router.get('/commands', checkSession, (req, res) => {
             function saveCommand() {
                 const commandName = document.getElementById('commandName').value;
                 const description = document.getElementById('commandDescription').value;
-                const access = document.getElementById('commandAccess').value;
+                const accessLevel = document.getElementById('commandAccess').value;
                 const message = document.getElementById('commandMessage').value;
                 const enabled = document.getElementById('commandEnabled').checked;
 
-                // Here you would normally send the data to an API
-                console.log('Saving command:', {
-                    name: commandName,
-                    description,
-                    access,
-                    message,
-                    enabled
+                fetch('/api/commands/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        commandName,
+                        description,
+                        accessLevel,
+                        message,
+                        enabled
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('success', 'Command updated successfully!');
+                        $('#commandEditModal').modal('hide');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        showNotification('error', 'Failed to update command: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('error', 'Error updating command');
                 });
-
-                showNotification('success', 'Command updated successfully!');
-                $('#commandEditModal').modal('hide');
             }
 
-            function toggleCommand(commandName) {
-                if (confirm('Are you sure you want to toggle this command?')) {
-                    // Here you would normally call an API to toggle the command
-                    showNotification('info', 'Command ' + commandName + ' toggled');
+            function toggleCommand(commandName, currentStatus) {
+                const action = currentStatus ? 'disable' : 'enable';
+                if (confirm(\`Are you sure you want to \${action} the command !\${commandName}?\`)) {
+                    fetch('/api/commands/toggle', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            commandName,
+                            enabled: !currentStatus
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('success', \`Command !\${commandName} \${action}d successfully!\`);
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showNotification('error', 'Failed to toggle command: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('error', 'Error toggling command');
+                    });
                 }
             }
 
-            function addNewCommand() {
-                // Clear form
-                document.getElementById('commandEditForm').reset();
-                document.getElementById('commandName').value = '';
-                document.getElementById('commandName').readOnly = false;
-                $('#commandEditModal').modal('show');
+            function insertVariable(variable) {
+                const textarea = document.getElementById('commandMessage');
+                const cursorPos = textarea.selectionStart;
+                const textBefore = textarea.value.substring(0, cursorPos);
+                const textAfter = textarea.value.substring(cursorPos);
+
+                textarea.value = textBefore + variable + textAfter;
+                textarea.focus();
+                textarea.setSelectionRange(cursorPos + variable.length, cursorPos + variable.length);
+            }
+
+            function filterByCategory() {
+                const selectedCategory = document.getElementById('categoryFilter').value;
+                const table = document.getElementById('commandsTable');
+                const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    const category = row.getAttribute('data-category');
+
+                    if (selectedCategory === '' || category === selectedCategory) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
             }
         </script>
     `;
@@ -1300,7 +1330,7 @@ router.get('/commands', checkSession, (req, res) => {
 // Groups page
 router.get('/groups', checkSession, async (req, res) => {
     const { getConfiguredJoinedGroups } = require('../utils/whatsappUtils');
-    const { getAllGroupsSettings } = require('../utils/groupSettings');
+
 
     let groupsHtml = '';
 
@@ -1309,16 +1339,36 @@ router.get('/groups', checkSession, async (req, res) => {
         const joinedGroups = await getConfiguredJoinedGroups(whatsappClientRef);
 
         if (joinedGroups && joinedGroups.length > 0) {
-            joinedGroups.forEach(group => {
+            for (const group of joinedGroups) {
                 const hellEventBadge = group.hellNotifications === 'all' ?
                     '<span class="badge badge-success">All Events</span>' :
                     group.hellNotifications === 'watcherchaos' ?
                     '<span class="badge badge-primary">Watcher & Chaos</span>' :
                     '<span class="badge badge-secondary">Disabled</span>';
 
-                const botStatusBadge = group.botEnabled ?
-                    '<span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>Active</span>' :
-                    '<span class="badge badge-danger"><i class="fas fa-times-circle mr-1"></i>Inactive</span>';
+                // Get bot level in group (Admin/Member)
+                let botLevelBadge = '<span class="badge badge-secondary">Unknown</span>';
+                try {
+                    if (whatsappClientRef) {
+                        const chat = await whatsappClientRef.getChatById(group.id);
+                        if (chat && chat.participants) {
+                            const botNumber = whatsappClientRef.info.wid.user;
+                            const botParticipant = chat.participants.find(p => p.id.user === botNumber);
+
+                            if (botParticipant) {
+                                if (botParticipant.isSuperAdmin) {
+                                    botLevelBadge = '<span class="badge badge-danger"><i class="fas fa-crown mr-1"></i>Super Admin</span>';
+                                } else if (botParticipant.isAdmin) {
+                                    botLevelBadge = '<span class="badge badge-warning"><i class="fas fa-shield-alt mr-1"></i>Admin</span>';
+                                } else {
+                                    botLevelBadge = '<span class="badge badge-info"><i class="fas fa-user mr-1"></i>Member</span>';
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error getting bot level for group:', group.id, error);
+                }
 
                 let rentStatusBadge = '';
                 if (group.rentMode) {
@@ -1349,24 +1399,24 @@ router.get('/groups', checkSession, async (req, res) => {
                             <span class="badge badge-info">${group.participantCount} members</span>
                         </td>
                         <td>${hellEventBadge}</td>
-                        <td>${botStatusBadge}</td>
+                        <td>${botLevelBadge}</td>
                         <td>${rentStatusBadge}</td>
                         <td>
                             <div class="btn-group" role="group">
-                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('${group.id}', '${group.name}', '${group.hellNotifications}', ${group.botEnabled}, '${group.rentExpiry || ''}')">
+                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('${group.id}', '${group.name}', '${group.hellNotifications}', ${group.botEnabled}, '${group.rentExpiry || ''}')" title="Edit Group Settings">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-warning" onclick="toggleBot('${group.id}', '${group.name}', ${group.botEnabled})">
+                                <button class="btn btn-sm btn-outline-warning" onclick="toggleBot('${group.id}', '${group.name}', ${group.botEnabled})" title="${group.botEnabled ? 'Disable' : 'Enable'} Bot">
                                     <i class="fas fa-power-off"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('${group.id}', '${group.name}')">
+                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('${group.id}', '${group.name}')" title="Leave Group">
                                     <i class="fas fa-sign-out-alt"></i>
                                 </button>
                             </div>
                         </td>
                     </tr>
                 `;
-            });
+            }
         } else {
             groupsHtml = '<tr><td colspan="6" class="text-center text-muted">No groups found. Bot needs to be added to WhatsApp groups.</td></tr>';
         }
@@ -1397,7 +1447,7 @@ router.get('/groups', checkSession, async (req, res) => {
                                         <th>Group Name</th>
                                         <th>Members</th>
                                         <th>Hell Events</th>
-                                        <th>Bot Status</th>
+                                        <th>Bot Level</th>
                                         <th>Rent Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -1844,8 +1894,25 @@ router.get('/settings', checkSession, (req, res) => {
                 const defaultFilter = document.getElementById('defaultFilter').value;
                 const hellNotifications = document.getElementById('hellNotifications').checked;
 
-                console.log('Saving hell settings:', { discordChannel, defaultFilter, hellNotifications });
-                showNotification('success', 'Hell Events settings saved successfully!');
+                fetch('/api/settings/hell', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ discordChannel, defaultFilter, hellNotifications })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('success', 'Hell Events settings saved successfully!');
+                    } else {
+                        showNotification('error', 'Failed to save settings: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('error', 'Error saving settings');
+                });
             }
 
             function saveMonsterSettings() {

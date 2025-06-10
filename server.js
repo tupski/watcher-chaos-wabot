@@ -10,6 +10,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const { router: adminlteRoutes, setWhatsAppClientRef: setAdminLTEWhatsAppClientRef } = require('./routes/adminlte-routes');
 const { router: apiGroupsRoutes, setWhatsAppClientRef: setApiGroupsWhatsAppClientRef } = require('./routes/api-groups');
 const apiSettingsRoutes = require('./routes/api-settings');
+const apiCommandsRoutes = require('./routes/api-commands');
 
 // Create Express app
 const app = express();
@@ -59,6 +60,7 @@ app.use('/api', apiRoutes);
 app.use('/api/groups', apiGroupsRoutes);
 app.use('/api/settings', apiSettingsRoutes);
 app.use('/api/system', apiSettingsRoutes);
+app.use('/api/commands', apiCommandsRoutes);
 
 // Auth routes
 app.use('/auth', authRoutes);
