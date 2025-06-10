@@ -1298,7 +1298,82 @@ router.get('/commands', checkSession, (req, res) => {
 });
 
 // Groups page
-router.get('/groups', checkSession, (req, res) => {
+router.get('/groups', checkSession, async (req, res) => {
+    const { getConfiguredJoinedGroups } = require('../utils/whatsappUtils');
+    const { getAllGroupsSettings } = require('../utils/groupSettings');
+
+    let groupsHtml = '';
+
+    try {
+        // Get real groups data
+        const joinedGroups = await getConfiguredJoinedGroups(whatsappClientRef);
+
+        if (joinedGroups && joinedGroups.length > 0) {
+            joinedGroups.forEach(group => {
+                const hellEventBadge = group.hellNotifications === 'all' ?
+                    '<span class="badge badge-success">All Events</span>' :
+                    group.hellNotifications === 'watcherchaos' ?
+                    '<span class="badge badge-primary">Watcher & Chaos</span>' :
+                    '<span class="badge badge-secondary">Disabled</span>';
+
+                const botStatusBadge = group.botEnabled ?
+                    '<span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>Active</span>' :
+                    '<span class="badge badge-danger"><i class="fas fa-times-circle mr-1"></i>Inactive</span>';
+
+                let rentStatusBadge = '';
+                if (group.rentMode) {
+                    if (group.rentExpiry) {
+                        const expiryDate = new Date(group.rentExpiry);
+                        const now = new Date();
+                        const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+                        if (daysLeft > 0) {
+                            rentStatusBadge = `<span class="badge badge-warning"><i class="fas fa-clock mr-1"></i>${daysLeft} days left</span>`;
+                        } else {
+                            rentStatusBadge = '<span class="badge badge-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Expired</span>';
+                        }
+                    } else {
+                        rentStatusBadge = '<span class="badge badge-info"><i class="fas fa-infinity mr-1"></i>Unlimited</span>';
+                    }
+                } else {
+                    rentStatusBadge = '<span class="badge badge-success"><i class="fas fa-infinity mr-1"></i>Unlimited</span>';
+                }
+
+                groupsHtml += `
+                    <tr>
+                        <td>
+                            <strong>${group.name}</strong><br>
+                            <small class="text-muted">${group.id}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-info">${group.participantCount} members</span>
+                        </td>
+                        <td>${hellEventBadge}</td>
+                        <td>${botStatusBadge}</td>
+                        <td>${rentStatusBadge}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('${group.id}', '${group.name}', '${group.hellNotifications}', ${group.botEnabled}, '${group.rentExpiry || ''}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning" onclick="toggleBot('${group.id}', '${group.name}', ${group.botEnabled})">
+                                    <i class="fas fa-power-off"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('${group.id}', '${group.name}')">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            groupsHtml = '<tr><td colspan="6" class="text-center text-muted">No groups found. Bot needs to be added to WhatsApp groups.</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+        groupsHtml = '<tr><td colspan="6" class="text-center text-danger">Error loading groups. Please check if WhatsApp is connected.</td></tr>';
+    }
     const content = `
         <div class="row">
             <div class="col-12">
@@ -1328,111 +1403,7 @@ router.get('/groups', checkSession, (req, res) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>
-                                            <strong>Lords Mobile Indonesia</strong><br>
-                                            <small class="text-muted">120363167287303832@g.us</small>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-info">156 members</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-success">All Events</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-success">
-                                                <i class="fas fa-check-circle mr-1"></i>Active
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-warning">
-                                                <i class="fas fa-clock mr-1"></i>15 days left
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('120363167287303832@g.us')">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-warning" onclick="toggleBot('120363167287303832@g.us')">
-                                                    <i class="fas fa-power-off"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('120363167287303832@g.us')">
-                                                    <i class="fas fa-sign-out-alt"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>LM Guild Alliance</strong><br>
-                                            <small class="text-muted">120363329911125895@g.us</small>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-info">89 members</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-primary">Watcher & Chaos</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-success">
-                                                <i class="fas fa-check-circle mr-1"></i>Active
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-success">
-                                                <i class="fas fa-infinity mr-1"></i>Unlimited
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('120363329911125895@g.us')">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-warning" onclick="toggleBot('120363329911125895@g.us')">
-                                                    <i class="fas fa-power-off"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('120363329911125895@g.us')">
-                                                    <i class="fas fa-sign-out-alt"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Test Group</strong><br>
-                                            <small class="text-muted">120363123456789012@g.us</small>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-info">25 members</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-secondary">Disabled</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-danger">
-                                                <i class="fas fa-times-circle mr-1"></i>Inactive
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-danger">
-                                                <i class="fas fa-exclamation-triangle mr-1"></i>Expired
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('120363123456789012@g.us')">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-success" onclick="toggleBot('120363123456789012@g.us')">
-                                                    <i class="fas fa-power-off"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('120363123456789012@g.us')">
-                                                    <i class="fas fa-sign-out-alt"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    ${groupsHtml}
                                 </tbody>
                             </table>
                         </div>
@@ -1509,41 +1480,14 @@ router.get('/groups', checkSession, (req, res) => {
                 });
             });
 
-            function editGroup(groupId) {
-                // Set group ID
+            function editGroup(groupId, groupName, hellNotifications, botEnabled, rentExpiry) {
+                // Set group data
                 document.getElementById('groupId').value = groupId;
-
-                // Load group data (this would normally come from an API)
-                const groupData = {
-                    '120363167287303832@g.us': {
-                        name: 'Lords Mobile Indonesia',
-                        hellEvent: 'all',
-                        enabled: true,
-                        rentExpiry: '',
-                        autoMessages: true
-                    },
-                    '120363329911125895@g.us': {
-                        name: 'LM Guild Alliance',
-                        hellEvent: 'watcherchaos',
-                        enabled: true,
-                        rentExpiry: '',
-                        autoMessages: true
-                    },
-                    '120363123456789012@g.us': {
-                        name: 'Test Group',
-                        hellEvent: 'disabled',
-                        enabled: false,
-                        rentExpiry: '2024-01-01T00:00',
-                        autoMessages: false
-                    }
-                };
-
-                const data = groupData[groupId] || {};
-                document.getElementById('groupName').value = data.name || '';
-                document.getElementById('hellEventSetting').value = data.hellEvent || 'all';
-                document.getElementById('botEnabled').value = data.enabled ? 'true' : 'false';
-                document.getElementById('rentExpiry').value = data.rentExpiry || '';
-                document.getElementById('autoMessages').checked = data.autoMessages || false;
+                document.getElementById('groupName').value = groupName;
+                document.getElementById('hellEventSetting').value = hellNotifications || 'all';
+                document.getElementById('botEnabled').value = botEnabled ? 'true' : 'false';
+                document.getElementById('rentExpiry').value = rentExpiry || '';
+                document.getElementById('autoMessages').checked = true; // Default to true
 
                 $('#groupEditModal').modal('show');
             }
@@ -1555,36 +1499,92 @@ router.get('/groups', checkSession, (req, res) => {
                 const rentExpiry = document.getElementById('rentExpiry').value;
                 const autoMessages = document.getElementById('autoMessages').checked;
 
-                // Here you would normally send the data to an API
-                console.log('Saving group settings:', {
-                    groupId,
-                    hellEvent,
-                    enabled,
-                    rentExpiry,
-                    autoMessages
+                // Send data to API
+                fetch('/api/groups/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        groupId,
+                        hellNotifications: hellEvent,
+                        botEnabled: enabled,
+                        rentExpiry: rentExpiry || null,
+                        autoMessages
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('success', 'Group settings updated successfully!');
+                        $('#groupEditModal').modal('hide');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        showNotification('error', 'Failed to update group settings: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('error', 'Error updating group settings');
                 });
-
-                showNotification('success', 'Group settings updated successfully!');
-                $('#groupEditModal').modal('hide');
             }
 
-            function toggleBot(groupId) {
-                if (confirm('Are you sure you want to toggle bot status for this group?')) {
-                    // Here you would normally call an API to toggle the bot
-                    showNotification('info', 'Bot status toggled for group');
+            function toggleBot(groupId, groupName, currentStatus) {
+                const action = currentStatus ? 'disable' : 'enable';
+                if (confirm(\`Are you sure you want to \${action} bot for "\${groupName}"?\`)) {
+                    fetch('/api/groups/toggle-bot', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            groupId,
+                            enabled: !currentStatus
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('success', \`Bot \${action}d for "\${groupName}"\`);
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showNotification('error', 'Failed to toggle bot: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('error', 'Error toggling bot status');
+                    });
                 }
             }
 
-            function leaveGroup(groupId) {
-                if (confirm('Are you sure you want to leave this group? This action cannot be undone.')) {
-                    // Here you would normally call an API to leave the group
-                    showNotification('warning', 'Left group successfully');
+            function leaveGroup(groupId, groupName) {
+                if (confirm(\`Are you sure you want to leave "\${groupName}"? This action cannot be undone.\`)) {
+                    fetch('/api/groups/leave', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ groupId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('success', \`Left "\${groupName}" successfully\`);
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showNotification('error', 'Failed to leave group: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('error', 'Error leaving group');
+                    });
                 }
             }
 
             function refreshGroups() {
                 showNotification('info', 'Refreshing group list...');
-                // Here you would normally reload the group data
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
@@ -1818,9 +1818,25 @@ router.get('/settings', checkSession, (req, res) => {
                 const timezone = document.getElementById('timezone').value;
                 const autoRestart = document.getElementById('autoRestart').checked;
 
-                // Here you would normally send the data to an API
-                console.log('Saving bot settings:', { botOwner, timezone, autoRestart });
-                showNotification('success', 'Bot settings saved successfully!');
+                fetch('/api/settings/bot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ botOwner, timezone, autoRestart })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('success', 'Bot settings saved successfully!');
+                    } else {
+                        showNotification('error', 'Failed to save settings: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('error', 'Error saving settings');
+                });
             }
 
             function saveHellSettings() {
@@ -1851,8 +1867,27 @@ router.get('/settings', checkSession, (req, res) => {
 
             function restartBot() {
                 if (confirm('Are you sure you want to restart the bot? This will disconnect all users temporarily.')) {
-                    showNotification('warning', 'Bot restart initiated...');
-                    // Here you would call the restart API
+                    fetch('/api/system/restart', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('warning', 'Bot restart initiated...');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 5000);
+                        } else {
+                            showNotification('error', 'Failed to restart bot: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('error', 'Error restarting bot');
+                    });
                 }
             }
 

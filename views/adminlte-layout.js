@@ -374,22 +374,23 @@ function createAdminLTELayout(title, content, activeMenu = '', username = '') {
             });
         }
 
-        // Initialize Socket.IO for real-time updates
-        if (typeof io !== 'undefined') {
-            const socket = io();
-            
+        // Initialize Socket.IO for real-time updates (only once)
+        if (typeof io !== 'undefined' && !window.socketInitialized) {
+            window.socket = io();
+            window.socketInitialized = true;
+
             // Handle new messages
-            socket.on('new-message', function(message) {
+            window.socket.on('new-message', function(message) {
                 updateMessageCount();
                 updateRecentMessage(message);
             });
-            
+
             // Handle WhatsApp connection status
-            socket.on('whatsapp-connected', function() {
+            window.socket.on('whatsapp-connected', function() {
                 showNotification('success', 'WhatsApp terhubung!');
             });
-            
-            socket.on('whatsapp-disconnected', function() {
+
+            window.socket.on('whatsapp-disconnected', function() {
                 showNotification('warning', 'WhatsApp terputus!');
             });
         }
