@@ -116,8 +116,21 @@ module.exports = async (whatsappClient, message) => {
                         // Calculate remaining time
                         const timeLeftMinutes = Math.max(0, Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes()));
 
-                        // Check if we should filter based on ONLY_WATCHER_CHAOS setting
-                        const onlyWatcherChaos = process.env.ONLY_WATCHER_CHAOS === 'true';
+                        // Check if we should filter based on group setting or ONLY_WATCHER_CHAOS setting
+                        // For WhatsApp command, use group setting; for Discord auto-notification, use global setting
+                        const { getGroupSettings } = require('../utils/groupSettings');
+                        let onlyWatcherChaos = process.env.ONLY_WATCHER_CHAOS === 'true'; // Default from .env
+
+                        // If this is a WhatsApp command (!hell), check group setting
+                        if (isWhatsAppMessage && message.from) {
+                            const groupSettings = getGroupSettings(message.from);
+                            if (groupSettings.hellNotifications === 'watcherchaos') {
+                                onlyWatcherChaos = true;
+                            } else if (groupSettings.hellNotifications === 'all') {
+                                onlyWatcherChaos = false;
+                            }
+                        }
+
                         const isWatcherOrChaos = eventName.toLowerCase().includes('watcher') ||
                                                eventName.toLowerCase().includes('chaos dragon');
 
@@ -405,12 +418,26 @@ module.exports = async (whatsappClient, message) => {
             }
 
             // Check if we should filter for only Watcher/Chaos Dragon events
-            const onlyWatcherChaos = process.env.ONLY_WATCHER_CHAOS === 'true';
+            // Priority: Group setting > Global .env setting
+            const { getGroupSettings } = require('../utils/groupSettings');
+            const groupSettings = getGroupSettings(message.from || 'global');
+
+            // Use group setting if available, otherwise fall back to .env
+            let onlyWatcherChaos;
+            if (groupSettings.hellNotifications === 'watcherchaos') {
+                onlyWatcherChaos = true;
+            } else if (groupSettings.hellNotifications === 'all') {
+                onlyWatcherChaos = false;
+            } else {
+                // Fall back to .env setting
+                onlyWatcherChaos = process.env.ONLY_WATCHER_CHAOS === 'true';
+            }
+
             const isWatcherOrChaos = eventName && (eventName.toLowerCase().includes('watcher') ||
                                     eventName.toLowerCase().includes('chaos dragon'));
 
             console.log(`Found Hell Event: Reward="${eventName}" | Task="${taskName}" | ${minutesLeft}m left | ${points}`);
-            console.log(`Filter setting: ONLY_WATCHER_CHAOS=${onlyWatcherChaos}, isWatcherOrChaos=${isWatcherOrChaos}`);
+            console.log(`Filter setting: Group=${groupSettings.hellNotifications}, Env=${process.env.ONLY_WATCHER_CHAOS}, Final=${onlyWatcherChaos}, isWatcherOrChaos=${isWatcherOrChaos}`);
 
             if (onlyWatcherChaos && !isWatcherOrChaos) {
                 console.log(`Filtering out non-Watcher/Chaos event: Reward="${eventName}" Task="${taskName}"`);
@@ -493,9 +520,24 @@ module.exports = async (whatsappClient, message) => {
                         }
 
                         // Check if this group should receive hell notifications
-                        const eventType = isWatcherOrChaos ? (eventName.toLowerCase().includes('watcher') ? 'watcher' : 'chaos') : 'other';
-                        if (!shouldReceiveHellNotifications(groupId.trim(), eventType)) {
-                            console.log(`Skipping group ${groupId} - notifications disabled or filtered`);
+                        // Use group-specific setting, not global .env setting
+                        const { getGroupSettings } = require('../utils/groupSettings');
+                        const groupSettings = getGroupSettings(groupId.trim());
+
+                        let shouldSendToGroup = true;
+
+                        // Check group-specific hell notification setting
+                        if (groupSettings.hellNotifications === 'off') {
+                            shouldSendToGroup = false;
+                        } else if (groupSettings.hellNotifications === 'watcherchaos') {
+                            shouldSendToGroup = isWatcherOrChaos;
+                        } else {
+                            // 'all' or undefined (default to all)
+                            shouldSendToGroup = true;
+                        }
+
+                        if (!shouldSendToGroup) {
+                            console.log(`Skipping group ${groupId} - group setting: ${groupSettings.hellNotifications}, isWatcherOrChaos: ${isWatcherOrChaos}`);
                             continue;
                         }
 

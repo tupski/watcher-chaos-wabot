@@ -78,6 +78,16 @@ whatsappClient.on('ready', () => {
     // Start rent expiry scheduler
     startRentExpiryScheduler(whatsappClient);
 
+    // Send restart notification to BOT_OWNER
+    setTimeout(async () => {
+        try {
+            const { sendRestartNotification } = require('./commands/restart');
+            await sendRestartNotification(whatsappClient, 'after', 'Bot startup complete');
+        } catch (error) {
+            console.error('Error sending startup notification:', error);
+        }
+    }, 7000); // Wait 7 seconds for client to be fully ready
+
     // Notify web clients that WhatsApp is connected
     io.emit('whatsapp-connected');
 });

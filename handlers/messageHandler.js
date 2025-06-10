@@ -42,7 +42,7 @@ module.exports = async (client, message) => {
 
     // Check if bot is active in this group (considering both normal enable and rent)
     const chat = await message.getChat();
-    if (isGroupChat(chat) && !['enablebot', 'rent', 'botowner'].includes(commandName)) {
+    if (isGroupChat(chat) && !['enablebot', 'rent', 'botowner', 'restart'].includes(commandName)) {
         const groupId = chat.id._serialized;
         if (!isBotActiveInGroup(groupId)) {
             console.log(`Bot is not active in group ${groupId}, showing promo message for command: ${commandName}`);
@@ -115,7 +115,8 @@ module.exports = async (client, message) => {
         'activate': 'activate.js',
         'revenue': 'revenue.js',
         'paymentlog': 'paymentlog.js',
-        'botowner': 'botowner.js'
+        'botowner': 'botowner.js',
+        'restart': 'restart.js'
     };
 
     // Get the actual command file

@@ -337,19 +337,41 @@ function getGroupsNeedingRenewal() {
     const allSettings = getAllGroupsSettings();
     const needRenewal = [];
     const now = new Date();
-    const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
 
     for (const [groupId, settings] of Object.entries(allSettings)) {
         if (settings.rentMode && settings.rentExpiry && settings.rentOwner) {
             const expiryDate = new Date(settings.rentExpiry);
+            const timeDiff = expiryDate.getTime() - now.getTime();
+            const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+            const hoursLeft = Math.ceil(timeDiff / (1000 * 60 * 60));
 
-            // Check if expiry is within 3 days and still active
-            if (expiryDate > now && expiryDate <= threeDaysFromNow) {
+            // Get current hour to match expiry time
+            const currentHour = now.getHours();
+            const expiryHour = expiryDate.getHours();
+
+            // Send notifications at the same hour as expiry time for 3, 2, 1 days before
+            if (expiryDate > now && currentHour === expiryHour) {
+                if (daysLeft === 3 || daysLeft === 2 || daysLeft === 1) {
+                    needRenewal.push({
+                        groupId,
+                        settings,
+                        expiryDate,
+                        daysLeft,
+                        hoursLeft,
+                        notificationType: 'daily'
+                    });
+                }
+            }
+
+            // Send final notification 12 hours before expiry (regardless of hour)
+            if (timeDiff > 0 && timeDiff <= 12 * 60 * 60 * 1000) {
                 needRenewal.push({
                     groupId,
                     settings,
                     expiryDate,
-                    daysLeft: Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24))
+                    daysLeft,
+                    hoursLeft,
+                    notificationType: 'final'
                 });
             }
         }

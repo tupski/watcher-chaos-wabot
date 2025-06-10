@@ -6,6 +6,9 @@ const { getGroupSettings, setRentMode, getGroupsNeedingRenewal } = require('../u
 // File to store group settings
 const settingsFile = path.join(__dirname, '..', 'data', 'groupSettings.json');
 
+// File to store notification tracking
+const notificationTrackingFile = path.join(__dirname, '..', 'data', 'notificationTracking.json');
+
 /**
  * Load all group settings
  */
@@ -19,6 +22,67 @@ function loadAllSettings() {
         console.error('Error loading group settings for rent expiry check:', error);
     }
     return {};
+}
+
+/**
+ * Load notification tracking data
+ */
+function loadNotificationTracking() {
+    try {
+        if (fs.existsSync(notificationTrackingFile)) {
+            const data = fs.readFileSync(notificationTrackingFile, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error loading notification tracking:', error);
+    }
+    return {};
+}
+
+/**
+ * Save notification tracking data
+ */
+function saveNotificationTracking(data) {
+    try {
+        // Ensure data directory exists
+        const dataDir = path.dirname(notificationTrackingFile);
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
+
+        fs.writeFileSync(notificationTrackingFile, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('Error saving notification tracking:', error);
+    }
+}
+
+/**
+ * Check if notification was already sent today
+ */
+function isNotificationSentToday(notificationKey, today) {
+    const tracking = loadNotificationTracking();
+    return tracking[notificationKey] === today;
+}
+
+/**
+ * Mark notification as sent today
+ */
+function markNotificationSent(notificationKey, today) {
+    const tracking = loadNotificationTracking();
+    tracking[notificationKey] = today;
+
+    // Clean up old entries (older than 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoString = sevenDaysAgo.toDateString();
+
+    for (const [key, date] of Object.entries(tracking)) {
+        if (new Date(date) < new Date(sevenDaysAgoString)) {
+            delete tracking[key];
+        }
+    }
+
+    saveNotificationTracking(tracking);
 }
 
 /**
@@ -73,11 +137,17 @@ function checkRenewalNotifications(whatsappClient) {
         console.log(`Found ${groupsNeedingRenewal.length} groups needing renewal notification`);
 
         for (const groupInfo of groupsNeedingRenewal) {
-            const { groupId, settings, expiryDate, daysLeft } = groupInfo;
+            const { groupId, settings, expiryDate, daysLeft, hoursLeft, notificationType } = groupInfo;
 
             // Only send notification if owner is not trial user
             if (settings.rentOwner && settings.rentOwner.id !== 'trial@trial.com') {
-                sendRenewalNotification(whatsappClient, settings.rentOwner, groupId, expiryDate, daysLeft);
+                if (notificationType === 'final') {
+                    // Send final notification (12 hours before expiry)
+                    sendFinalRenewalNotification(whatsappClient, settings.rentOwner, groupId, expiryDate, hoursLeft);
+                } else {
+                    // Send daily notification (3, 2, 1 days before expiry)
+                    sendRenewalNotification(whatsappClient, settings.rentOwner, groupId, expiryDate, daysLeft);
+                }
             }
         }
 
@@ -87,13 +157,22 @@ function checkRenewalNotifications(whatsappClient) {
 }
 
 /**
- * Send renewal notification to owner
+ * Send renewal notification to owner (with daily limit check)
  */
 async function sendRenewalNotification(whatsappClient, ownerInfo, groupId, expiryDate, daysLeft) {
     try {
         // Check if ownerInfo is valid
         if (!ownerInfo || !ownerInfo.id) {
             console.log(`Skipping renewal notification for ${groupId}: owner info not available`);
+            return;
+        }
+
+        // Check if notification was already sent today
+        const today = new Date().toDateString();
+        const notificationKey = `${groupId}_${ownerInfo.id}_renewal`;
+
+        if (isNotificationSentToday(notificationKey, today)) {
+            console.log(`Renewal notification already sent today for ${groupId} to ${ownerInfo.name}`);
             return;
         }
 
@@ -119,10 +198,68 @@ async function sendRenewalNotification(whatsappClient, ownerInfo, groupId, expir
             'Bot akan nonaktif otomatis jika tidak diperpanjang.';
 
         await whatsappClient.sendMessage(ownerInfo.id, renewalMessage);
-        console.log(`Renewal notification sent to owner: ${ownerInfo.name} (${ownerInfo.id})`);
+
+        // Mark notification as sent today
+        markNotificationSent(notificationKey, today);
+
+        console.log(`Renewal notification sent to owner: ${ownerInfo.name} (${ownerInfo.id}) for group ${groupId}`);
 
     } catch (error) {
         console.error(`Error sending renewal notification to owner ${ownerInfo.id}:`, error);
+    }
+}
+
+/**
+ * Send final renewal notification (12 hours before expiry)
+ */
+async function sendFinalRenewalNotification(whatsappClient, ownerInfo, groupId, expiryDate, hoursLeft) {
+    try {
+        // Check if ownerInfo is valid
+        if (!ownerInfo || !ownerInfo.id) {
+            console.log(`Skipping final renewal notification for ${groupId}: owner info not available`);
+            return;
+        }
+
+        // Check if notification was already sent today
+        const today = new Date().toDateString();
+        const notificationKey = `${groupId}_${ownerInfo.id}_final_renewal`;
+
+        if (isNotificationSentToday(notificationKey, today)) {
+            console.log(`Final renewal notification already sent today for ${groupId} to ${ownerInfo.name}`);
+            return;
+        }
+
+        const finalRenewalMessage =
+            '🚨 *PERINGATAN TERAKHIR - Sewa Bot Akan Berakhir!*\n\n' +
+            `**Grup:** ${groupId}\n` +
+            `**Sisa Waktu:** ${hoursLeft} jam lagi\n` +
+            `**Kadaluarsa:** ${expiryDate.toLocaleDateString('id-ID')} ${expiryDate.toLocaleTimeString('id-ID')}\n\n` +
+            '⏰ *SEGERA PERPANJANG SEBELUM TERLAMBAT!*\n\n' +
+            '🔴 *Bot akan nonaktif otomatis jika tidak diperpanjang*\n\n' +
+            '💰 *Paket Perpanjangan:*\n' +
+            '• 1 hari: Rp 2,000\n' +
+            '• 1 minggu: Rp 10,000\n' +
+            '• 1 bulan: Rp 50,000\n' +
+            '• 6 bulan: Rp 500,000\n' +
+            '• 1 tahun: Rp 950,000\n\n' +
+            '🚀 *Cara Perpanjang CEPAT:*\n' +
+            '1. Ketik `!rent pay <durasi>` di grup SEKARANG\n' +
+            '2. Pilih metode pembayaran\n' +
+            '3. Selesaikan pembayaran\n' +
+            '4. Bot aktif otomatis\n\n' +
+            '📱 *Bantuan Darurat:* 0822-1121-9993 (Angga)\n\n' +
+            '⚠️ *JANGAN SAMPAI TERLEWAT!*\n' +
+            `Hanya tersisa ${hoursLeft} jam lagi!`;
+
+        await whatsappClient.sendMessage(ownerInfo.id, finalRenewalMessage);
+
+        // Mark notification as sent today
+        markNotificationSent(notificationKey, today);
+
+        console.log(`Final renewal notification sent to owner: ${ownerInfo.name} (${ownerInfo.id}) for group ${groupId} (${hoursLeft} hours left)`);
+
+    } catch (error) {
+        console.error(`Error sending final renewal notification to owner ${ownerInfo.id}:`, error);
     }
 }
 
@@ -308,8 +445,8 @@ function startRentExpiryScheduler(whatsappClient) {
         timezone: 'Asia/Jakarta' // GMT+7
     });
 
-    // Check for renewal notifications every day at 9 AM
-    cron.schedule('0 9 * * *', () => {
+    // Check for renewal notifications every hour (to match expiry times)
+    cron.schedule('0 * * * *', () => {
         checkRenewalNotifications(whatsappClient);
     }, {
         timezone: 'Asia/Jakarta' // GMT+7

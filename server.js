@@ -2,9 +2,11 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const socketIo = require('socket.io');
+const session = require('express-session');
 const { router: apiRoutes, setWhatsAppClient } = require('./routes/api');
 const authRoutes = require('./routes/auth');
 const { router: paymentRoutes, setWhatsAppClient: setPaymentWhatsAppClient } = require('./routes/payment');
+const dashboardRoutes = require('./routes/dashboard');
 
 // Create Express app
 const app = express();
@@ -35,7 +37,19 @@ app.use('/payment/webhook', express.raw({ type: 'application/json' }), (req, res
 
 // Regular middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Session middleware
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true in production with HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
 
 // API routes
 app.use('/api', apiRoutes);
@@ -46,6 +60,9 @@ app.use('/auth', authRoutes);
 // Payment routes
 app.use('/payment', paymentRoutes);
 
+// Dashboard routes
+app.use('/dashboard', dashboardRoutes);
+
 // Socket.io connection
 io.on('connection', (socket) => {
     console.log('New client connected');
@@ -55,8 +72,18 @@ io.on('connection', (socket) => {
     });
 });
 
-// Serve the main HTML file for all other routes
+// Redirect root to dashboard
+app.get('/', (req, res) => {
+    res.redirect('/dashboard');
+});
+
+// Serve the main HTML file for other routes (except dashboard)
 app.get('*', (req, res) => {
+    // Don't serve index.html for dashboard routes
+    if (req.path.startsWith('/dashboard')) {
+        res.status(404).send('Dashboard route not found');
+        return;
+    }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
