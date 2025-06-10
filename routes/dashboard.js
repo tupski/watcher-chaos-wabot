@@ -700,39 +700,129 @@ router.get('/commands', checkSession, (req, res) => {
         </div>
 
         <script>
-            // Sample command messages (in production, load from database)
-            const commandMessages = {
-                '!ping': 'Pong! Bot is online and responding.',
-                '!help': 'Available commands: !ping, !hell, !monster, !tagall, !rent',
-                '!hell': 'Current Hell Event information will be displayed here.',
-                '!monster': 'Current monster rotation information.',
-                '!tagall': 'Tagging all group members...',
-                '!rent': 'Bot rental information and pricing.',
-                '!ai': 'AI assistant is ready to help you!'
-            };
+            // Load command messages from database
+            let commandMessages = {};
+            let commandSettings = {};
+
+            // Load commands on page load
+            async function loadCommands() {
+                try {
+                    const response = await fetch('/api/commands');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        commandSettings = data.data;
+                        // Convert to old format for compatibility
+                        commandMessages = {};
+                        for (const [cmd, settings] of Object.entries(commandSettings)) {
+                            commandMessages['!' + cmd] = settings.message;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading commands:', error);
+                }
+            }
 
             function editCommandMessage(command) {
+                const cmdName = command.replace('!', '');
+                const cmdSettings = commandSettings[cmdName] || {};
+
                 document.getElementById('commandName').value = command;
-                document.getElementById('commandMessage').value = commandMessages[command] || '';
-                document.getElementById('commandEnabled').value = 'true';
+                document.getElementById('commandMessage').value = cmdSettings.message || '';
+                document.getElementById('commandEnabled').value = cmdSettings.enabled !== false ? 'true' : 'false';
+
+                // Add access level selector
+                const accessLevelHtml = \`
+                    <div class="mb-3">
+                        <label for="commandAccessLevel" class="form-label">Access Level</label>
+                        <select class="form-select" id="commandAccessLevel">
+                            <option value="all" \${cmdSettings.accessLevel === 'all' ? 'selected' : ''}>All Users (Bot Owner, Member, Admin)</option>
+                            <option value="member" \${cmdSettings.accessLevel === 'member' ? 'selected' : ''}>Member (Admin & Member)</option>
+                            <option value="admin" \${cmdSettings.accessLevel === 'admin' ? 'selected' : ''}>Admin (Admin & Bot Owner)</option>
+                        </select>
+                        <div class="form-text">
+                            Bot Owner can always override permission restrictions.
+                        </div>
+                    </div>
+                \`;
+
+                // Insert access level selector before status selector
+                const statusDiv = document.querySelector('#commandEnabled').closest('.mb-3');
+                if (!document.getElementById('commandAccessLevel')) {
+                    statusDiv.insertAdjacentHTML('beforebegin', accessLevelHtml);
+                }
 
                 new bootstrap.Modal(document.getElementById('commandMessageModal')).show();
             }
 
-            function saveCommandMessage() {
-                const command = document.getElementById('commandName').value;
+            async function saveCommandMessage() {
+                const command = document.getElementById('commandName').value.replace('!', '');
                 const message = document.getElementById('commandMessage').value;
-                const enabled = document.getElementById('commandEnabled').value;
+                const enabled = document.getElementById('commandEnabled').value === 'true';
+                const accessLevel = document.getElementById('commandAccessLevel')?.value || 'all';
 
-                // In production, save to database via API
-                commandMessages[command] = message;
+                try {
+                    const response = await fetch(\`/api/commands/\${command}\`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message,
+                            enabled,
+                            accessLevel
+                        })
+                    });
 
-                // Close modal and show success message
-                bootstrap.Modal.getInstance(document.getElementById('commandMessageModal')).hide();
+                    const data = await response.json();
 
-                // Show success toast or alert
-                alert('Command message updated successfully!');
+                    if (data.success) {
+                        // Update local data
+                        commandMessages['!' + command] = message;
+                        if (!commandSettings[command]) commandSettings[command] = {};
+                        commandSettings[command].message = message;
+                        commandSettings[command].enabled = enabled;
+                        commandSettings[command].accessLevel = accessLevel;
+
+                        // Close modal
+                        bootstrap.Modal.getInstance(document.getElementById('commandMessageModal')).hide();
+
+                        // Show success message
+                        showAlert('success', 'Command berhasil diperbarui!');
+
+                        // Refresh page to show updated access level
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        showAlert('danger', 'Gagal memperbarui command: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error saving command:', error);
+                    showAlert('danger', 'Terjadi kesalahan saat menyimpan command');
+                }
             }
+
+            function showAlert(type, message) {
+                const alertHtml = \`
+                    <div class="alert alert-\${type} alert-dismissible fade show" role="alert">
+                        \${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                \`;
+
+                const container = document.querySelector('.container-fluid');
+                container.insertAdjacentHTML('afterbegin', alertHtml);
+
+                // Auto dismiss after 3 seconds
+                setTimeout(() => {
+                    const alert = document.querySelector('.alert');
+                    if (alert) {
+                        bootstrap.Alert.getOrCreateInstance(alert).close();
+                    }
+                }, 3000);
+            }
+
+            // Load commands when page loads
+            document.addEventListener('DOMContentLoaded', loadCommands);
         </script>
     `;
 
@@ -861,6 +951,63 @@ router.get('/settings', checkSession, async (req, res) => {
                                         <option value="9" ${process.env.TIMEZONE_OFFSET === '9' ? 'selected' : ''}>GMT+9 (WIT)</option>
                                     </select>
                                     <div class="form-text">Timezone for monster reset and other scheduled tasks</div>
+                                </div>
+                            </div>
+
+                            <!-- Hell Events Management Section -->
+                            <hr class="my-4">
+                            <h5 class="mb-3"><i class="bi bi-fire me-2"></i>Hell Events Management</h5>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="alert alert-info" role="alert">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <strong>Global Setting:</strong> ${process.env.ONLY_WATCHER_CHAOS === 'true' ? 'Watcher & Chaos Dragon Only' : 'All Hell Events'}
+                                        <br>
+                                        <small>Groups can override this setting individually using !hell commands</small>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Recent Hell Events</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="hellEventsLog">
+                                                <div class="text-center text-muted">
+                                                    <i class="bi bi-clock-history me-2"></i>
+                                                    Loading recent Hell Events...
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Group Hell Event Settings</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Group</th>
+                                                            <th>Setting</th>
+                                                            <th>Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="groupHellSettings">
+                                                        <tr>
+                                                            <td colspan="3" class="text-center text-muted">
+                                                                <i class="bi bi-clock-history me-2"></i>
+                                                                Loading group settings...
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1297,7 +1444,14 @@ router.get('/messages', checkSession, (req, res) => {
     // Get messages with filters
     const result = Message.getAll(page, limit);
     const messages = result.messages || [];
-    const pagination = result.pagination || {};
+    const pagination = {
+        currentPage: result.currentPage || page,
+        totalPages: result.totalPages || 0,
+        totalItems: result.totalMessages || 0,
+        itemsPerPage: limit,
+        hasNext: (result.currentPage || page) < (result.totalPages || 0),
+        hasPrev: (result.currentPage || page) > 1
+    };
 
     // Build filter options
     const typeOptions = [
@@ -1371,7 +1525,8 @@ router.get('/messages', checkSession, (req, res) => {
                     <strong>${message.contact || 'Unknown'}</strong>
                 </td>
                 <td>
-                    <div class="message-preview" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <div class="message-preview" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;"
+                         onclick="showMessageDetail('${message.id}', '${(message.body || '').replace(/'/g, "\\'")}', '${message.contact || 'Unknown'}', '${timestamp}', '${message.type}')">
                         ${message.body || '-'}
                     </div>
                 </td>
@@ -1392,10 +1547,20 @@ router.get('/messages', checkSession, (req, res) => {
     if (pagination.totalPages > 1) {
         paginationHtml = '<nav aria-label="Message pagination"><ul class="pagination justify-content-center">';
 
+        // First page
+        if (pagination.currentPage > 3) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=1&type=${type}&status=${status}">1</a></li>`;
+            if (pagination.currentPage > 4) {
+                paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+
+        // Previous button
         if (pagination.hasPrev) {
             paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${pagination.currentPage - 1}&type=${type}&status=${status}">‹</a></li>`;
         }
 
+        // Page numbers around current page
         const startPage = Math.max(1, pagination.currentPage - 2);
         const endPage = Math.min(pagination.totalPages, pagination.currentPage + 2);
 
@@ -1407,11 +1572,38 @@ router.get('/messages', checkSession, (req, res) => {
             }
         }
 
+        // Next button
         if (pagination.hasNext) {
             paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${pagination.currentPage + 1}&type=${type}&status=${status}">›</a></li>`;
         }
 
+        // Last page
+        if (pagination.currentPage < pagination.totalPages - 2) {
+            if (pagination.currentPage < pagination.totalPages - 3) {
+                paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${pagination.totalPages}&type=${type}&status=${status}">${pagination.totalPages}</a></li>`;
+        }
+
         paginationHtml += '</ul></nav>';
+
+        // Add page info
+        paginationHtml += `
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <small class="text-muted">
+                    Halaman ${pagination.currentPage} dari ${pagination.totalPages}
+                    (${pagination.totalItems} total pesan)
+                </small>
+                <div class="d-flex align-items-center">
+                    <label class="me-2">Pesan per halaman:</label>
+                    <select class="form-select form-select-sm" style="width: auto;" onchange="changePageSize(this.value)">
+                        <option value="20" ${limit === 20 ? 'selected' : ''}>20</option>
+                        <option value="50" ${limit === 50 ? 'selected' : ''}>50</option>
+                        <option value="100" ${limit === 100 ? 'selected' : ''}>100</option>
+                    </select>
+                </div>
+            </div>
+        `;
     }
 
     const content = `
@@ -1463,7 +1655,125 @@ router.get('/messages', checkSession, (req, res) => {
             </div>
         </div>
 
+        <!-- Message Detail Modal -->
+        <div class="modal fade" id="messageDetailModal" tabindex="-1" aria-labelledby="messageDetailModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="messageDetailModalLabel">Detail Pesan</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Kontak:</strong>
+                                <p id="modalContact" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Waktu:</strong>
+                                <p id="modalTimestamp" class="mb-0"></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Tipe:</strong>
+                                <p id="modalType" class="mb-0"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>ID Pesan:</strong>
+                                <p id="modalId" class="mb-0 font-monospace"></p>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Isi Pesan:</strong>
+                            <div id="modalMessage" class="border rounded p-3 mt-2" style="background-color: #f8f9fa; white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn btn-outline-primary" onclick="copyMessageText()">
+                            <i class="bi bi-clipboard me-1"></i>Copy Pesan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script>
+            // Function to format WhatsApp markdown
+            function formatWhatsAppMarkdown(text) {
+                if (!text) return '';
+
+                // Escape HTML first
+                text = text.replace(/&/g, '&amp;')
+                          .replace(/</g, '&lt;')
+                          .replace(/>/g, '&gt;');
+
+                // Format WhatsApp markdown
+                text = text
+                    // Bold: *text*
+                    .replace(/\*([^*]+)\*/g, '<strong>$1</strong>')
+                    // Italic: _text_
+                    .replace(/_([^_]+)_/g, '<em>$1</em>')
+                    // Strikethrough: ~text~
+                    .replace(/~([^~]+)~/g, '<del>$1</del>')
+                    // Monospace: \`\`\`text\`\`\`
+                    .replace(/\`\`\`([^\`]+)\`\`\`/g, '<code class="d-block bg-light p-2 rounded">$1</code>')
+                    // Inline code: \`text\`
+                    .replace(/\`([^\`]+)\`/g, '<code class="bg-light px-1 rounded">$1</code>');
+
+                return text;
+            }
+
+            // Function to show message detail modal
+            function showMessageDetail(id, body, contact, timestamp, type) {
+                document.getElementById('modalId').textContent = id;
+                document.getElementById('modalContact').textContent = contact;
+                document.getElementById('modalTimestamp').textContent = timestamp;
+                document.getElementById('modalType').innerHTML = type === 'received' ?
+                    '<i class="bi bi-arrow-down-circle text-success me-1"></i>Pesan Masuk' :
+                    '<i class="bi bi-arrow-up-circle text-primary me-1"></i>Pesan Keluar';
+
+                // Format message with WhatsApp markdown
+                const formattedMessage = formatWhatsAppMarkdown(body);
+                document.getElementById('modalMessage').innerHTML = formattedMessage;
+
+                // Store original text for copying
+                document.getElementById('modalMessage').setAttribute('data-original', body);
+
+                // Show modal
+                new bootstrap.Modal(document.getElementById('messageDetailModal')).show();
+            }
+
+            // Function to copy message text
+            function copyMessageText() {
+                const originalText = document.getElementById('modalMessage').getAttribute('data-original');
+                navigator.clipboard.writeText(originalText).then(() => {
+                    // Show success feedback
+                    const btn = event.target.closest('button');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="bi bi-check me-1"></i>Copied!';
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-success');
+
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-outline-primary');
+                    }, 2000);
+                }).catch(err => {
+                    alert('Gagal menyalin teks: ' + err);
+                });
+            }
+
+            // Function to change page size
+            function changePageSize(newLimit) {
+                const url = new URL(window.location);
+                url.searchParams.set('limit', newLimit);
+                url.searchParams.set('page', '1'); // Reset to first page
+                window.location.href = url.toString();
+            }
+
             function applyMessageFilters() {
                 const type = document.getElementById('typeFilter').value;
                 const status = document.getElementById('statusFilter').value;

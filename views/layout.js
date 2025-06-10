@@ -345,11 +345,7 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                                 <i class="bi bi-gear"></i> Bot Settings
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link ${activeMenu === 'hell-events' ? 'active' : ''}" href="/dashboard/hell-events">
-                                <i class="bi bi-fire"></i> Hell Events
-                            </a>
-                        </li>
+
                         <li class="nav-item">
                             <a class="nav-link ${activeMenu === 'commands' ? 'active' : ''}" href="/dashboard/commands">
                                 <i class="bi bi-list-ul"></i> Command List

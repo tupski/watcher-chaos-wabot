@@ -82,6 +82,48 @@ router.post('/logout', async (req, res) => {
 });
 
 /**
+ * GET /api/commands
+ * Get all command messages and settings
+ */
+router.get('/commands', (req, res) => {
+    try {
+        const commandDb = require('../utils/commandDatabase');
+        const commands = commandDb.getAllCommands();
+        res.json({ success: true, data: commands });
+    } catch (error) {
+        console.error('Error getting commands:', error);
+        res.status(500).json({ success: false, message: 'Failed to get commands' });
+    }
+});
+
+/**
+ * POST /api/commands/:command
+ * Update command message and settings
+ */
+router.post('/commands/:command', (req, res) => {
+    try {
+        const { command } = req.params;
+        const { message, accessLevel, enabled } = req.body;
+
+        const commandDb = require('../utils/commandDatabase');
+        const success = commandDb.updateCommand(command, {
+            message,
+            accessLevel,
+            enabled: enabled !== false
+        });
+
+        if (success) {
+            res.json({ success: true, message: 'Command updated successfully' });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to update command' });
+        }
+    } catch (error) {
+        console.error('Error updating command:', error);
+        res.status(500).json({ success: false, message: 'Failed to update command' });
+    }
+});
+
+/**
  * GET /api/groups
  * Get all WhatsApp groups
  */
