@@ -2,8 +2,68 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth, redirectIfAuthenticated, checkSession } = require('../middleware/auth');
 const { getAllGroupsSettings, updateGroupSettings } = require('../utils/groupSettings');
+const { getJoinedGroups, getConfiguredJoinedGroups, getAllCommands } = require('../utils/whatsappUtils');
 const fs = require('fs');
 const path = require('path');
+
+// Store WhatsApp client reference
+let whatsappClientRef = null;
+
+// Set WhatsApp client reference
+function setWhatsAppClientRef(client) {
+    whatsappClientRef = client;
+}
+
+// Get recent activities (dynamic)
+function getRecentActivities() {
+    const activities = [];
+    const now = new Date();
+
+    // Add some dynamic activities based on current time and system state
+    activities.push({
+        icon: 'bi-robot',
+        iconColor: 'text-primary',
+        title: 'Bot Online',
+        description: 'System running normally',
+        time: 'Active',
+        timeColor: 'text-success'
+    });
+
+    // Add uptime activity
+    const uptimeMinutes = Math.floor(process.uptime() / 60);
+    activities.push({
+        icon: 'bi-clock',
+        iconColor: 'text-info',
+        title: 'System Uptime',
+        description: `Running for ${uptimeMinutes} minutes`,
+        time: 'Continuous',
+        timeColor: 'text-info'
+    });
+
+    // Add memory usage activity
+    const memoryUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    activities.push({
+        icon: 'bi-cpu',
+        iconColor: 'text-warning',
+        title: 'Memory Usage',
+        description: `${memoryUsage} MB allocated`,
+        time: 'Real-time',
+        timeColor: 'text-warning'
+    });
+
+    // Add Hell Event status
+    const hellEventStatus = process.env.ONLY_WATCHER_CHAOS === 'true' ? 'Filtered' : 'All Events';
+    activities.push({
+        icon: 'bi-fire',
+        iconColor: 'text-danger',
+        title: 'Hell Event Monitor',
+        description: `Mode: ${hellEventStatus}`,
+        time: 'Monitoring',
+        timeColor: 'text-danger'
+    });
+
+    return activities;
+}
 
 // Login page
 router.get('/login', redirectIfAuthenticated, (req, res) => {
@@ -259,36 +319,22 @@ router.get('/', checkSession, (req, res) => {
         <!-- Recent Activity -->
         <div class="row">
             <div class="col-12">
-                <div class="card">
+                <div class="card clickable-card" onclick="window.location.href='/dashboard/logs'">
                     <div class="card-header">
                         <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Activity</h5>
                     </div>
                     <div class="card-body">
                         <div class="list-group list-group-flush">
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-robot text-primary me-2"></i>
-                                    <strong>Bot Started</strong>
-                                    <small class="text-muted d-block">System initialized successfully</small>
+                            ${getRecentActivities().map(activity => `
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi ${activity.icon} ${activity.iconColor} me-2"></i>
+                                        <strong>${activity.title}</strong>
+                                        <small class="text-muted d-block">${activity.description}</small>
+                                    </div>
+                                    <small class="${activity.timeColor}">${activity.time}</small>
                                 </div>
-                                <small class="text-muted">Just now</small>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-people text-success me-2"></i>
-                                    <strong>${activeGroups} Groups Active</strong>
-                                    <small class="text-muted d-block">Bot is responding to commands</small>
-                                </div>
-                                <small class="text-muted">Active</small>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-fire text-warning me-2"></i>
-                                    <strong>Hell Event Monitor</strong>
-                                    <small class="text-muted d-block">Monitoring Discord for Hell Events</small>
-                                </div>
-                                <small class="text-muted">Running</small>
-                            </div>
+                            `).join('')}
                         </div>
                     </div>
                 </div>
@@ -297,6 +343,119 @@ router.get('/', checkSession, (req, res) => {
     `;
 
     res.send(createLayout('Dashboard', content, 'dashboard', req.session.username));
+});
+
+// Command List page
+router.get('/commands', checkSession, (req, res) => {
+    const { createLayout } = require('../views/layout');
+    const commands = getAllCommands();
+
+    let commandsHtml = '';
+
+    for (const [category, commandList] of Object.entries(commands)) {
+        commandsHtml += `
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-folder me-2"></i>${category}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Command</th>
+                                        <th>Description</th>
+                                        <th>Access Level</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${commandList.map(cmd => `
+                                        <tr>
+                                            <td><code>${cmd.command}</code></td>
+                                            <td>${cmd.description}</td>
+                                            <td>
+                                                <span class="badge ${cmd.adminOnly ? 'bg-warning' : 'bg-success'}">
+                                                    <i class="bi bi-${cmd.adminOnly ? 'shield-lock' : 'people'} me-1"></i>
+                                                    ${cmd.adminOnly ? 'Admin Only' : 'All Users'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    const content = `
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h4><i class="bi bi-list-ul me-2"></i>Bot Command List</h4>
+                        <p class="text-muted">Complete list of all available bot commands organized by category</p>
+                    </div>
+                </div>
+            </div>
+            ${commandsHtml}
+        </div>
+
+        <!-- Command Usage Guide -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Usage Guide</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <span class="badge bg-success me-2">All Users</span>
+                                Can be used by any group member
+                            </li>
+                            <li class="mb-2">
+                                <span class="badge bg-warning me-2">Admin Only</span>
+                                Requires group admin privileges
+                            </li>
+                            <li class="mb-2">
+                                <span class="badge bg-danger me-2">BOT_OWNER</span>
+                                Only bot owner can use
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Tips</h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="bi bi-arrow-right text-primary me-2"></i>
+                                Commands are case-insensitive
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-arrow-right text-primary me-2"></i>
+                                Use <code>!help</code> for quick reference
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-arrow-right text-primary me-2"></i>
+                                Some commands have sub-options
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    res.send(createLayout('Command List', content, 'commands', req.session.username));
 });
 
 // Settings page
@@ -361,6 +520,33 @@ router.get('/settings', checkSession, (req, res) => {
                                         <option value="9" ${process.env.TIMEZONE_OFFSET === '9' ? 'selected' : ''}>GMT+9 (WIT)</option>
                                     </select>
                                     <div class="form-text">Timezone for monster reset and other scheduled tasks</div>
+                                </div>
+                            </div>
+
+                            <!-- AI Settings Section -->
+                            <hr class="my-4">
+                            <h5 class="mb-3"><i class="bi bi-robot me-2"></i>AI Assistant Settings</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="ai_provider" class="form-label">
+                                        <i class="bi bi-cpu me-2"></i>AI Provider
+                                    </label>
+                                    <select name="ai_provider" id="ai_provider" class="form-select">
+                                        <option value="gemini" ${process.env.AI_PROVIDER === 'gemini' ? 'selected' : ''}>Google Gemini</option>
+                                        <option value="openai" ${process.env.AI_PROVIDER === 'openai' ? 'selected' : ''}>OpenAI ChatGPT</option>
+                                        <option value="claude" ${process.env.AI_PROVIDER === 'claude' ? 'selected' : ''}>Anthropic Claude</option>
+                                    </select>
+                                    <div class="form-text">Choose AI provider for !ai command</div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="ai_api_key" class="form-label">
+                                        <i class="bi bi-key me-2"></i>AI API Key
+                                    </label>
+                                    <input type="password" name="ai_api_key" id="ai_api_key" class="form-control"
+                                           value="${process.env.AI_API_KEY ? '••••••••••••••••' : ''}"
+                                           placeholder="Enter API key for selected provider">
+                                    <div class="form-text">API key for the selected AI provider</div>
                                 </div>
                             </div>
 
@@ -1293,10 +1479,168 @@ router.post('/toggle-bot', checkSession, (req, res) => {
     }
 });
 
+// Profile page
+router.get('/profile', checkSession, (req, res) => {
+    const { createLayout } = require('../views/layout');
+
+    const content = `
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-person me-2"></i>Profile Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="/dashboard/update-profile">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="display_name" class="form-label">
+                                        <i class="bi bi-person-badge me-2"></i>Display Name
+                                    </label>
+                                    <input type="text" name="display_name" id="display_name" class="form-control"
+                                           value="${req.session.displayName || req.session.username || 'Admin'}"
+                                           placeholder="Enter display name">
+                                    <div class="form-text">Name shown in dashboard header</div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="username" class="form-label">
+                                        <i class="bi bi-person me-2"></i>Username
+                                    </label>
+                                    <input type="text" name="username" id="username" class="form-control"
+                                           value="${req.session.username || 'admin'}"
+                                           placeholder="Enter username">
+                                    <div class="form-text">Username for login</div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="current_password" class="form-label">
+                                        <i class="bi bi-lock me-2"></i>Current Password
+                                    </label>
+                                    <input type="password" name="current_password" id="current_password" class="form-control"
+                                           placeholder="Enter current password">
+                                    <div class="form-text">Required to change password</div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="new_password" class="form-label">
+                                        <i class="bi bi-key me-2"></i>New Password
+                                    </label>
+                                    <input type="password" name="new_password" id="new_password" class="form-control"
+                                           placeholder="Enter new password (optional)">
+                                    <div class="form-text">Leave blank to keep current password</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg me-2"></i>Update Profile
+                                </button>
+                                <a href="/dashboard" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Information -->
+        <div class="row mt-4">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Account Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <small class="text-muted">Current Session</small>
+                                <p class="mb-0">${req.session.username || 'admin'}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <small class="text-muted">Login Time</small>
+                                <p class="mb-0">${new Date().toLocaleString('id-ID')}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <small class="text-muted">Session ID</small>
+                                <p class="mb-0 text-truncate">${req.sessionID || 'N/A'}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <small class="text-muted">Access Level</small>
+                                <p class="mb-0">
+                                    <span class="badge bg-success">Administrator</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    res.send(createLayout('Profile Settings', content, 'profile', req.session.username));
+});
+
+// Update profile
+router.post('/update-profile', checkSession, (req, res) => {
+    const { display_name, username, current_password, new_password } = req.body;
+
+    try {
+        const validUsername = process.env.DASHBOARD_USERNAME || 'admin';
+        const validPassword = process.env.DASHBOARD_PASSWORD || 'admin123';
+
+        // Verify current password if trying to change password
+        if (new_password && current_password !== validPassword) {
+            return res.redirect('/dashboard/profile?error=Current password is incorrect');
+        }
+
+        // Update .env file
+        const fs = require('fs');
+        const path = require('path');
+        const envPath = path.join(__dirname, '..', '.env');
+        let envContent = fs.readFileSync(envPath, 'utf8');
+
+        // Update username
+        if (username && username !== validUsername) {
+            envContent = envContent.replace(
+                /DASHBOARD_USERNAME=.*/,
+                `DASHBOARD_USERNAME=${username}`
+            );
+            process.env.DASHBOARD_USERNAME = username;
+        }
+
+        // Update password
+        if (new_password) {
+            envContent = envContent.replace(
+                /DASHBOARD_PASSWORD=.*/,
+                `DASHBOARD_PASSWORD=${new_password}`
+            );
+            process.env.DASHBOARD_PASSWORD = new_password;
+        }
+
+        fs.writeFileSync(envPath, envContent);
+
+        // Update session
+        req.session.username = username || req.session.username;
+        req.session.displayName = display_name || req.session.displayName;
+
+        res.redirect('/dashboard/profile?success=Profile updated successfully');
+
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.redirect('/dashboard/profile?error=Failed to update profile');
+    }
+});
+
 // Logout
 router.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/dashboard/login');
 });
+
+// Export setWhatsAppClientRef function
+router.setWhatsAppClientRef = setWhatsAppClientRef;
 
 module.exports = router;

@@ -168,34 +168,37 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                     .sidebar {
                         transform: translateX(-100%);
                     }
-                    
+
                     .sidebar.show {
                         transform: translateX(0);
                     }
-                    
+
                     .main-content {
                         margin-left: 0;
                     }
-                    
+
                     .content-wrapper {
-                        padding: 0 1rem 1rem;
+                        padding: 0 1rem 5rem; /* Add bottom padding for floating menu */
                     }
-                    
+
                     .top-navbar {
                         padding: 1rem;
+                        position: sticky;
+                        top: 0;
+                        z-index: 1020;
                     }
                 }
-                
+
                 .mobile-menu-btn {
                     display: none;
                 }
-                
+
                 @media (max-width: 768px) {
                     .mobile-menu-btn {
                         display: block;
                     }
                 }
-                
+
                 .sidebar-overlay {
                     display: none;
                     position: fixed;
@@ -206,11 +209,61 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                     background: rgba(0,0,0,0.5);
                     z-index: 999;
                 }
-                
+
                 @media (max-width: 768px) {
                     .sidebar-overlay.show {
                         display: block;
                     }
+                }
+
+                /* Floating Quick Access Menu for Mobile */
+                .floating-menu {
+                    display: none;
+                    position: fixed;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+                    border-radius: 25px;
+                    padding: 10px 20px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    z-index: 1030;
+                }
+
+                @media (max-width: 768px) {
+                    .floating-menu {
+                        display: flex;
+                        gap: 15px;
+                        align-items: center;
+                    }
+                }
+
+                .floating-menu a {
+                    color: white;
+                    text-decoration: none;
+                    padding: 8px 12px;
+                    border-radius: 15px;
+                    transition: background 0.3s;
+                    font-size: 0.9rem;
+                }
+
+                .floating-menu a:hover {
+                    background: rgba(255,255,255,0.2);
+                }
+
+                .floating-menu a.active {
+                    background: rgba(255,255,255,0.3);
+                }
+
+                /* Clickable Cards */
+                .clickable-card {
+                    cursor: pointer;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .clickable-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
                 }
             </style>
         </head>
@@ -245,6 +298,11 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link ${activeMenu === 'commands' ? 'active' : ''}" href="/dashboard/commands">
+                                <i class="bi bi-list-ul"></i> Command List
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link ${activeMenu === 'statistics' ? 'active' : ''}" href="/dashboard/statistics">
                                 <i class="bi bi-graph-up"></i> Statistics
                             </a>
@@ -252,6 +310,11 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                         <li class="nav-item">
                             <a class="nav-link ${activeMenu === 'logs' ? 'active' : ''}" href="/dashboard/logs">
                                 <i class="bi bi-terminal"></i> System Logs
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link ${activeMenu === 'profile' ? 'active' : ''}" href="/dashboard/profile">
+                                <i class="bi bi-person"></i> Profile
                             </a>
                         </li>
                         <li class="nav-item mt-3">
@@ -265,7 +328,23 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
             
             <!-- Sidebar Overlay for Mobile -->
             <div class="sidebar-overlay" id="sidebarOverlay"></div>
-            
+
+            <!-- Floating Quick Access Menu for Mobile -->
+            <div class="floating-menu">
+                <a href="/dashboard" class="${activeMenu === 'dashboard' ? 'active' : ''}">
+                    <i class="bi bi-speedometer2"></i>
+                </a>
+                <a href="/dashboard/groups" class="${activeMenu === 'groups' ? 'active' : ''}">
+                    <i class="bi bi-people"></i>
+                </a>
+                <a href="/dashboard/settings" class="${activeMenu === 'settings' ? 'active' : ''}">
+                    <i class="bi bi-gear"></i>
+                </a>
+                <a href="/dashboard/logs" class="${activeMenu === 'logs' ? 'active' : ''}">
+                    <i class="bi bi-terminal"></i>
+                </a>
+            </div>
+
             <!-- Main Content -->
             <div class="main-content">
                 <!-- Top Navbar -->

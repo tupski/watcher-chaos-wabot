@@ -72,9 +72,13 @@ io.on('connection', (socket) => {
     });
 });
 
-// Redirect root to dashboard
+// Root route - redirect based on authentication
 app.get('/', (req, res) => {
-    res.redirect('/dashboard');
+    if (req.session && req.session.authenticated) {
+        res.redirect('/dashboard');
+    } else {
+        res.redirect('/dashboard/login');
+    }
 });
 
 // Serve the main HTML file for other routes (except dashboard)
