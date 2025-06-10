@@ -7,6 +7,7 @@ const { router: apiRoutes, setWhatsAppClient } = require('./routes/api');
 const authRoutes = require('./routes/auth');
 const { router: paymentRoutes, setWhatsAppClient: setPaymentWhatsAppClient } = require('./routes/payment');
 const dashboardRoutes = require('./routes/dashboard');
+const { router: adminlteRoutes, setWhatsAppClientRef: setAdminLTEWhatsAppClientRef } = require('./routes/adminlte-routes');
 
 // Create Express app
 const app = express();
@@ -60,8 +61,11 @@ app.use('/auth', authRoutes);
 // Payment routes
 app.use('/payment', paymentRoutes);
 
-// Dashboard routes
-app.use('/dashboard', dashboardRoutes);
+// Dashboard routes (original)
+app.use('/dashboard-old', dashboardRoutes);
+
+// AdminLTE Dashboard routes (new)
+app.use('/dashboard', adminlteRoutes);
 
 // Socket.io connection
 io.on('connection', (socket) => {
@@ -97,4 +101,4 @@ app.get('*', (req, res) => {
 });
 
 // Export the server, io, app, and setWhatsAppClient for use in index.js
-module.exports = { server, io, app, setWhatsAppClient, setPaymentWhatsAppClient };
+module.exports = { server, io, app, setWhatsAppClient, setPaymentWhatsAppClient, setAdminLTEWhatsAppClientRef };
