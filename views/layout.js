@@ -356,6 +356,16 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link ${activeMenu === 'messages' ? 'active' : ''}" href="/dashboard/messages">
+                                <i class="bi bi-chat-dots"></i> Message Log
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link ${activeMenu === 'bot-profile' ? 'active' : ''}" href="/dashboard/bot-profile">
+                                <i class="bi bi-robot"></i> Bot Profile
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link ${activeMenu === 'statistics' ? 'active' : ''}" href="/dashboard/statistics">
                                 <i class="bi bi-graph-up"></i> Statistics
                             </a>
@@ -390,11 +400,14 @@ function createLayout(title, content, activeMenu = 'dashboard', username = 'Admi
                 <a href="/dashboard/groups" class="${activeMenu === 'groups' ? 'active' : ''}">
                     <i class="bi bi-people"></i>
                 </a>
+                <a href="/dashboard/messages" class="${activeMenu === 'messages' ? 'active' : ''}">
+                    <i class="bi bi-chat-dots"></i>
+                </a>
+                <a href="/dashboard/bot-profile" class="${activeMenu === 'bot-profile' ? 'active' : ''}">
+                    <i class="bi bi-robot"></i>
+                </a>
                 <a href="/dashboard/settings" class="${activeMenu === 'settings' ? 'active' : ''}">
                     <i class="bi bi-gear"></i>
-                </a>
-                <a href="/dashboard/logs" class="${activeMenu === 'logs' ? 'active' : ''}">
-                    <i class="bi bi-terminal"></i>
                 </a>
             </div>
 

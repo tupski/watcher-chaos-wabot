@@ -75,20 +75,20 @@ function addMessage(message) {
 function deleteMessage(id) {
     try {
         const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-        
+
         // Find the index of the message with the given ID
         const index = data.messages.findIndex(msg => msg.id === id);
-        
+
         if (index === -1) {
             return false;
         }
-        
+
         // Remove the message from the array
         data.messages.splice(index, 1);
-        
+
         // Write back to the file
         fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-        
+
         return true;
     } catch (error) {
         console.error('Error deleting message from database:', error);
@@ -96,8 +96,27 @@ function deleteMessage(id) {
     }
 }
 
+/**
+ * Clear all messages from the database
+ * @returns {boolean} - Whether the clearing was successful
+ */
+function clearAllMessages() {
+    try {
+        const data = { messages: [] };
+
+        // Write empty messages array to the file
+        fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+
+        return true;
+    } catch (error) {
+        console.error('Error clearing all messages from database:', error);
+        return false;
+    }
+}
+
 module.exports = {
     getMessages,
     addMessage,
-    deleteMessage
+    deleteMessage,
+    clearAllMessages
 };

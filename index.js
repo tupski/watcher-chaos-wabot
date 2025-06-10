@@ -96,6 +96,10 @@ whatsappClient.on('ready', () => {
 
     // Notify web clients that WhatsApp is connected
     io.emit('whatsapp-connected');
+    io.emit('ready', {
+        phoneNumber: whatsappClient.info.wid.user,
+        platform: whatsappClient.info.platform || 'WhatsApp Web'
+    });
 });
 
 // Discord ready event

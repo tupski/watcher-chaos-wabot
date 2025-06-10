@@ -1284,6 +1284,541 @@ router.get('/statistics', checkSession, (req, res) => {
     res.send(createLayout('Statistics', content, 'statistics', req.session.username));
 });
 
+// Message Log page
+router.get('/messages', checkSession, (req, res) => {
+    const { createLayout } = require('../views/layout');
+    const Message = require('../models/message');
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const type = req.query.type || '';
+    const status = req.query.status || '';
+
+    // Get messages with filters
+    const result = Message.getAll(page, limit);
+    const messages = result.messages || [];
+    const pagination = result.pagination || {};
+
+    // Build filter options
+    const typeOptions = [
+        { value: '', label: 'Semua Tipe' },
+        { value: 'received', label: 'Pesan Masuk' },
+        { value: 'sent', label: 'Pesan Keluar' }
+    ];
+
+    const statusOptions = [
+        { value: '', label: 'Semua Status' },
+        { value: 'received', label: 'Diterima' },
+        { value: 'sent', label: 'Terkirim' },
+        { value: 'failed', label: 'Gagal' }
+    ];
+
+    // Build filter form
+    let filterForm = `
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <select class="form-select" id="typeFilter" onchange="applyMessageFilters()">
+                    ${typeOptions.map(opt =>
+                        `<option value="${opt.value}" ${type === opt.value ? 'selected' : ''}>${opt.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="statusFilter" onchange="applyMessageFilters()">
+                    ${statusOptions.map(opt =>
+                        `<option value="${opt.value}" ${status === opt.value ? 'selected' : ''}>${opt.label}</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="date" class="form-control" id="dateFilter" onchange="applyMessageFilters()">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary" onclick="clearMessageFilters()">
+                    <i class="bi bi-x-circle me-1"></i>Reset Filter
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Build message table
+    let messageRows = '';
+    messages.forEach(message => {
+        const timestamp = new Date(message.timestamp).toLocaleString('id-ID', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        const typeIcon = message.type === 'received' ? 'bi-arrow-down-circle text-success' : 'bi-arrow-up-circle text-primary';
+        const statusBadge = message.status === 'failed' ? 'bg-danger' :
+                           message.status === 'sent' ? 'bg-success' : 'bg-info';
+
+        messageRows += `
+            <tr>
+                <td>
+                    <small class="text-muted">${timestamp}</small>
+                </td>
+                <td>
+                    <i class="bi ${typeIcon} me-1"></i>
+                    ${message.type === 'received' ? 'Masuk' : 'Keluar'}
+                </td>
+                <td>
+                    <strong>${message.contact || 'Unknown'}</strong>
+                </td>
+                <td>
+                    <div class="message-preview" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${message.body || '-'}
+                    </div>
+                </td>
+                <td>
+                    <span class="badge ${statusBadge}">${message.status || 'unknown'}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMessage('${message.id}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    // Build pagination
+    let paginationHtml = '';
+    if (pagination.totalPages > 1) {
+        paginationHtml = '<nav aria-label="Message pagination"><ul class="pagination justify-content-center">';
+
+        if (pagination.hasPrev) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${pagination.currentPage - 1}&type=${type}&status=${status}">‹</a></li>`;
+        }
+
+        const startPage = Math.max(1, pagination.currentPage - 2);
+        const endPage = Math.min(pagination.totalPages, pagination.currentPage + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === pagination.currentPage) {
+                paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+            } else {
+                paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${i}&type=${type}&status=${status}">${i}</a></li>`;
+            }
+        }
+
+        if (pagination.hasNext) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${pagination.currentPage + 1}&type=${type}&status=${status}">›</a></li>`;
+        }
+
+        paginationHtml += '</ul></nav>';
+    }
+
+    const content = `
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Message Log</h5>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm me-2" onclick="refreshMessages()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="clearAllMessages()">
+                                <i class="bi bi-trash me-1"></i>Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        ${filterForm}
+
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Waktu</th>
+                                        <th>Tipe</th>
+                                        <th>Kontak</th>
+                                        <th>Pesan</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${messageRows || '<tr><td colspan="6" class="text-center text-muted">Tidak ada pesan</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        ${paginationHtml}
+
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Menampilkan ${messages.length} dari ${pagination.totalItems || 0} pesan
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function applyMessageFilters() {
+                const type = document.getElementById('typeFilter').value;
+                const status = document.getElementById('statusFilter').value;
+                const date = document.getElementById('dateFilter').value;
+
+                let url = '/dashboard/messages?';
+                const params = [];
+
+                if (type) params.push('type=' + type);
+                if (status) params.push('status=' + status);
+                if (date) params.push('date=' + date);
+
+                window.location.href = url + params.join('&');
+            }
+
+            function clearMessageFilters() {
+                window.location.href = '/dashboard/messages';
+            }
+
+            function refreshMessages() {
+                window.location.reload();
+            }
+
+            function deleteMessage(id) {
+                if (confirm('Apakah Anda yakin ingin menghapus pesan ini?')) {
+                    fetch('/api/messages/' + id, { method: 'DELETE' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.location.reload();
+                            } else {
+                                alert('Gagal menghapus pesan: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Terjadi kesalahan saat menghapus pesan');
+                        });
+                }
+            }
+
+            function clearAllMessages() {
+                if (confirm('Apakah Anda yakin ingin menghapus semua pesan? Tindakan ini tidak dapat dibatalkan.')) {
+                    fetch('/api/messages/clear', { method: 'DELETE' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.location.reload();
+                            } else {
+                                alert('Gagal menghapus pesan: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Terjadi kesalahan saat menghapus pesan');
+                        });
+                }
+            }
+        </script>
+    `;
+
+    res.send(createLayout('Message Log', content, 'messages', req.session.username));
+});
+
+// Bot Profile page
+router.get('/bot-profile', checkSession, (req, res) => {
+    const { createLayout } = require('../views/layout');
+    const Message = require('../models/message');
+
+    // Get bot status
+    const isConnected = whatsappClientRef && whatsappClientRef.info;
+    const botInfo = isConnected ? whatsappClientRef.info : null;
+
+    // Get message statistics
+    const messageStats = Message.getAll(1, 1);
+    const totalMessages = messageStats.pagination ? messageStats.pagination.totalItems : 0;
+
+    // Calculate basic stats (you can enhance this)
+    let sentCount = 0;
+    let receivedCount = 0;
+    let failedCount = 0;
+
+    // Get recent messages for stats calculation
+    const recentMessages = Message.getAll(1, 1000);
+    if (recentMessages.messages) {
+        recentMessages.messages.forEach(msg => {
+            if (msg.type === 'sent') sentCount++;
+            else if (msg.type === 'received') receivedCount++;
+            if (msg.status === 'failed') failedCount++;
+        });
+    }
+
+    const content = `
+        <div class="row mb-4">
+            <!-- Bot Status Card -->
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-robot me-2"></i>Status Bot</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="status-indicator ${isConnected ? 'bg-success' : 'bg-danger'} me-3"></div>
+                                    <div>
+                                        <h6 class="mb-1">WhatsApp Connection</h6>
+                                        <p class="mb-0 text-muted">
+                                            ${isConnected ? 'Terhubung' : 'Tidak Terhubung'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            ${isConnected ? `
+                                <div class="col-12 mb-3">
+                                    <h6>Informasi Device</h6>
+                                    <p class="mb-1"><strong>Nomor:</strong> +${botInfo.wid.user}</p>
+                                    <p class="mb-1"><strong>Device ID:</strong> ${botInfo.wid._serialized}</p>
+                                    <p class="mb-0"><strong>Platform:</strong> ${botInfo.platform || 'WhatsApp Web'}</p>
+                                </div>
+
+                                <div class="col-12">
+                                    <button class="btn btn-outline-danger" onclick="logoutBot()">
+                                        <i class="bi bi-box-arrow-right me-1"></i>Logout WhatsApp
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="col-12 mb-3">
+                                    <div class="alert alert-warning" role="alert">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        Bot belum terhubung ke WhatsApp. Scan QR Code untuk login.
+                                    </div>
+                                </div>
+
+                                <div class="col-12 text-center" id="qrCodeContainer">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading QR Code...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Menunggu QR Code...</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bot Information Card -->
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informasi Bot</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <h6>Bot Lords Mobile</h6>
+                                <p class="mb-1"><strong>Versi:</strong> 2.0.0</p>
+                                <p class="mb-1"><strong>Platform:</strong> Node.js</p>
+                                <p class="mb-1"><strong>Framework:</strong> whatsapp-web.js</p>
+                                <p class="mb-0"><strong>Uptime:</strong> <span id="botUptime">Calculating...</span></p>
+                            </div>
+
+                            <div class="col-12">
+                                <h6>Environment</h6>
+                                <p class="mb-1"><strong>Bot Owner:</strong> ${process.env.BOT_OWNER_NUMBER || 'Not set'}</p>
+                                <p class="mb-1"><strong>Timezone:</strong> GMT+${process.env.TIMEZONE_OFFSET || '7'}</p>
+                                <p class="mb-0"><strong>Mode:</strong> ${process.env.NODE_ENV || 'development'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Statistics -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Statistik Pesan</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-primary text-white">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </div>
+                                    <h3 class="stat-number">${totalMessages}</h3>
+                                    <p class="stat-label">Total Pesan</p>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-success text-white">
+                                        <i class="bi bi-arrow-up-circle"></i>
+                                    </div>
+                                    <h3 class="stat-number">${sentCount}</h3>
+                                    <p class="stat-label">Pesan Terkirim</p>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-info text-white">
+                                        <i class="bi bi-arrow-down-circle"></i>
+                                    </div>
+                                    <h3 class="stat-number">${receivedCount}</h3>
+                                    <p class="stat-label">Pesan Diterima</p>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-danger text-white">
+                                        <i class="bi bi-x-circle"></i>
+                                    </div>
+                                    <h3 class="stat-number">${failedCount}</h3>
+                                    <p class="stat-label">Pesan Gagal</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6>Aktivitas Hari Ini</h6>
+                                <div class="progress mb-3" style="height: 25px;">
+                                    <div class="progress-bar bg-success" role="progressbar"
+                                         style="width: ${totalMessages > 0 ? (sentCount / totalMessages) * 100 : 0}%">
+                                        Terkirim (${sentCount})
+                                    </div>
+                                    <div class="progress-bar bg-info" role="progressbar"
+                                         style="width: ${totalMessages > 0 ? (receivedCount / totalMessages) * 100 : 0}%">
+                                        Diterima (${receivedCount})
+                                    </div>
+                                    <div class="progress-bar bg-danger" role="progressbar"
+                                         style="width: ${totalMessages > 0 ? (failedCount / totalMessages) * 100 : 0}%">
+                                        Gagal (${failedCount})
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .status-indicator {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                display: inline-block;
+            }
+
+            .stat-card {
+                background: white;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                text-align: center;
+                border: 1px solid #e9ecef;
+            }
+
+            .stat-icon {
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 15px;
+                font-size: 20px;
+            }
+
+            .stat-number {
+                font-size: 2rem;
+                font-weight: bold;
+                margin-bottom: 5px;
+                color: #333;
+            }
+
+            .stat-label {
+                color: #666;
+                margin-bottom: 0;
+                font-size: 0.9rem;
+            }
+        </style>
+
+        <script>
+            // Initialize Socket.IO for real-time updates
+            const socket = io();
+
+            // Handle QR code updates
+            socket.on('qr', function(qrCodeUrl) {
+                const qrContainer = document.getElementById('qrCodeContainer');
+                if (qrContainer) {
+                    qrContainer.innerHTML = \`
+                        <img src="\${qrCodeUrl}" alt="QR Code" class="img-fluid" style="max-width: 300px;">
+                        <p class="mt-2 text-muted">Scan QR Code dengan WhatsApp Anda</p>
+                    \`;
+                }
+            });
+
+            // Handle connection ready
+            socket.on('ready', function() {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            });
+
+            // Calculate and update uptime
+            function updateUptime() {
+                const startTime = new Date('${new Date().toISOString()}');
+                const now = new Date();
+                const uptime = Math.floor((now - startTime) / 1000);
+
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+                const seconds = uptime % 60;
+
+                const uptimeElement = document.getElementById('botUptime');
+                if (uptimeElement) {
+                    uptimeElement.textContent = \`\${hours}h \${minutes}m \${seconds}s\`;
+                }
+            }
+
+            // Update uptime every second
+            setInterval(updateUptime, 1000);
+            updateUptime();
+
+            // Logout function
+            function logoutBot() {
+                if (confirm('Apakah Anda yakin ingin logout dari WhatsApp? Bot akan berhenti bekerja sampai login kembali.')) {
+                    fetch('/api/logout', { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Berhasil logout dari WhatsApp');
+                                window.location.reload();
+                            } else {
+                                alert('Gagal logout: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Terjadi kesalahan saat logout');
+                        });
+                }
+            }
+        </script>
+    `;
+
+    res.send(createLayout('Bot Profile', content, 'bot-profile', req.session.username));
+});
+
 // Logs page
 router.get('/logs', checkSession, (req, res) => {
     const { createLayout } = require('../views/layout');

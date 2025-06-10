@@ -41,6 +41,47 @@ router.delete('/messages/:id', (req, res) => {
 });
 
 /**
+ * DELETE /api/messages/clear
+ * Clear all messages
+ */
+router.delete('/messages/clear', (req, res) => {
+    try {
+        // Clear all messages from database
+        const db = require('../utils/database');
+        const success = db.clearAllMessages();
+
+        if (success) {
+            res.json({ success: true, message: 'All messages cleared successfully' });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to clear messages' });
+        }
+    } catch (error) {
+        console.error('Error clearing messages:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+/**
+ * POST /api/logout
+ * Logout from WhatsApp
+ */
+router.post('/logout', async (req, res) => {
+    try {
+        if (!whatsappClient) {
+            return res.status(400).json({ success: false, message: 'WhatsApp client not available' });
+        }
+
+        // Logout from WhatsApp
+        await whatsappClient.logout();
+
+        res.json({ success: true, message: 'Successfully logged out from WhatsApp' });
+    } catch (error) {
+        console.error('Error logging out from WhatsApp:', error);
+        res.status(500).json({ success: false, message: 'Failed to logout from WhatsApp' });
+    }
+});
+
+/**
  * GET /api/groups
  * Get all WhatsApp groups
  */
