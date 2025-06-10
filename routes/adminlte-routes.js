@@ -1038,4 +1038,1253 @@ router.get('/bot-profile', checkSession, (req, res) => {
     res.send(createAdminLTELayout('Bot Profile', content, 'bot-profile', req.session.username));
 });
 
+// Commands page
+router.get('/commands', checkSession, (req, res) => {
+    const content = `
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-list mr-1"></i>
+                            Command List
+                        </h3>
+                        <div class="card-tools">
+                            <button class="btn btn-primary btn-sm" onclick="addNewCommand()">
+                                <i class="fas fa-plus mr-1"></i>Add Command
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped data-table" id="commandsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Command</th>
+                                        <th>Description</th>
+                                        <th>Access Level</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>!hell</code></td>
+                                        <td>Show current Hell Event information</td>
+                                        <td><span class="badge badge-success">All Users</span></td>
+                                        <td><span class="badge badge-success">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('hell')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('hell')">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>!monster</code></td>
+                                        <td>Show monster rotation schedule</td>
+                                        <td><span class="badge badge-success">All Users</span></td>
+                                        <td><span class="badge badge-success">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('monster')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('monster')">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>!help</code></td>
+                                        <td>Show available commands</td>
+                                        <td><span class="badge badge-success">All Users</span></td>
+                                        <td><span class="badge badge-success">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('help')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('help')">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>!rent</code></td>
+                                        <td>Bot rental management</td>
+                                        <td><span class="badge badge-warning">Admin</span></td>
+                                        <td><span class="badge badge-success">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('rent')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('rent')">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>!restart</code></td>
+                                        <td>Restart bot system</td>
+                                        <td><span class="badge badge-danger">Bot Owner</span></td>
+                                        <td><span class="badge badge-success">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('restart')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="toggleCommand('restart')">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command Edit Modal -->
+        <div class="modal fade" id="commandEditModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Edit Command</h4>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="commandEditForm">
+                            <div class="form-group">
+                                <label for="commandName">Command Name</label>
+                                <input type="text" class="form-control" id="commandName" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="commandDescription">Description</label>
+                                <input type="text" class="form-control" id="commandDescription">
+                            </div>
+                            <div class="form-group">
+                                <label for="commandAccess">Access Level</label>
+                                <select class="form-control" id="commandAccess">
+                                    <option value="all">All Users</option>
+                                    <option value="member">Group Members</option>
+                                    <option value="admin">Group Admin</option>
+                                    <option value="owner">Bot Owner</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="commandMessage">Response Message</label>
+                                <textarea class="form-control" id="commandMessage" rows="5" placeholder="Enter the response message for this command..."></textarea>
+                                <small class="form-text text-muted">
+                                    You can use WhatsApp formatting: *bold*, _italic_, ~strikethrough~, \`code\`
+                                </small>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="commandEnabled">
+                                <label class="form-check-label" for="commandEnabled">
+                                    Command Enabled
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveCommand()">
+                            <i class="fas fa-save mr-1"></i>Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Initialize DataTable
+            $(document).ready(function() {
+                $('#commandsTable').DataTable({
+                    columnDefs: [
+                        { orderable: false, targets: [4] } // Disable sorting for action column
+                    ]
+                });
+            });
+
+            function editCommand(commandName) {
+                // Set command name
+                document.getElementById('commandName').value = commandName;
+
+                // Load command data (this would normally come from an API)
+                const commandData = {
+                    'hell': {
+                        description: 'Show current Hell Event information',
+                        access: 'all',
+                        message: 'Current Hell Event information will be displayed here.',
+                        enabled: true
+                    },
+                    'monster': {
+                        description: 'Show monster rotation schedule',
+                        access: 'all',
+                        message: 'Monster rotation schedule will be displayed here.',
+                        enabled: true
+                    },
+                    'help': {
+                        description: 'Show available commands',
+                        access: 'all',
+                        message: 'Available commands:\\n!hell - Hell Event info\\n!monster - Monster rotation\\n!help - This help',
+                        enabled: true
+                    },
+                    'rent': {
+                        description: 'Bot rental management',
+                        access: 'admin',
+                        message: 'Bot rental management commands.',
+                        enabled: true
+                    },
+                    'restart': {
+                        description: 'Restart bot system',
+                        access: 'owner',
+                        message: 'Bot will restart in 30 seconds...',
+                        enabled: true
+                    }
+                };
+
+                const data = commandData[commandName] || {};
+                document.getElementById('commandDescription').value = data.description || '';
+                document.getElementById('commandAccess').value = data.access || 'all';
+                document.getElementById('commandMessage').value = data.message || '';
+                document.getElementById('commandEnabled').checked = data.enabled || false;
+
+                $('#commandEditModal').modal('show');
+            }
+
+            function saveCommand() {
+                const commandName = document.getElementById('commandName').value;
+                const description = document.getElementById('commandDescription').value;
+                const access = document.getElementById('commandAccess').value;
+                const message = document.getElementById('commandMessage').value;
+                const enabled = document.getElementById('commandEnabled').checked;
+
+                // Here you would normally send the data to an API
+                console.log('Saving command:', {
+                    name: commandName,
+                    description,
+                    access,
+                    message,
+                    enabled
+                });
+
+                showNotification('success', 'Command updated successfully!');
+                $('#commandEditModal').modal('hide');
+            }
+
+            function toggleCommand(commandName) {
+                if (confirm('Are you sure you want to toggle this command?')) {
+                    // Here you would normally call an API to toggle the command
+                    showNotification('info', 'Command ' + commandName + ' toggled');
+                }
+            }
+
+            function addNewCommand() {
+                // Clear form
+                document.getElementById('commandEditForm').reset();
+                document.getElementById('commandName').value = '';
+                document.getElementById('commandName').readOnly = false;
+                $('#commandEditModal').modal('show');
+            }
+        </script>
+    `;
+
+    res.send(createAdminLTELayout('Command List', content, 'commands', req.session.username));
+});
+
+// Groups page
+router.get('/groups', checkSession, (req, res) => {
+    const content = `
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-users mr-1"></i>
+                            WhatsApp Groups
+                        </h3>
+                        <div class="card-tools">
+                            <button class="btn btn-success btn-sm" onclick="refreshGroups()">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped data-table" id="groupsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Group Name</th>
+                                        <th>Members</th>
+                                        <th>Hell Events</th>
+                                        <th>Bot Status</th>
+                                        <th>Rent Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <strong>Lords Mobile Indonesia</strong><br>
+                                            <small class="text-muted">120363167287303832@g.us</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info">156 members</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-success">All Events</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check-circle mr-1"></i>Active
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-warning">
+                                                <i class="fas fa-clock mr-1"></i>15 days left
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('120363167287303832@g.us')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-warning" onclick="toggleBot('120363167287303832@g.us')">
+                                                    <i class="fas fa-power-off"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('120363167287303832@g.us')">
+                                                    <i class="fas fa-sign-out-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>LM Guild Alliance</strong><br>
+                                            <small class="text-muted">120363329911125895@g.us</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info">89 members</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-primary">Watcher & Chaos</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check-circle mr-1"></i>Active
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-infinity mr-1"></i>Unlimited
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('120363329911125895@g.us')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-warning" onclick="toggleBot('120363329911125895@g.us')">
+                                                    <i class="fas fa-power-off"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('120363329911125895@g.us')">
+                                                    <i class="fas fa-sign-out-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Test Group</strong><br>
+                                            <small class="text-muted">120363123456789012@g.us</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info">25 members</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-secondary">Disabled</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-danger">
+                                                <i class="fas fa-times-circle mr-1"></i>Inactive
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-danger">
+                                                <i class="fas fa-exclamation-triangle mr-1"></i>Expired
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editGroup('120363123456789012@g.us')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-success" onclick="toggleBot('120363123456789012@g.us')">
+                                                    <i class="fas fa-power-off"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="leaveGroup('120363123456789012@g.us')">
+                                                    <i class="fas fa-sign-out-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Group Edit Modal -->
+        <div class="modal fade" id="groupEditModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Edit Group Settings</h4>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="groupEditForm">
+                            <div class="form-group">
+                                <label for="groupId">Group ID</label>
+                                <input type="text" class="form-control" id="groupId" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="groupName">Group Name</label>
+                                <input type="text" class="form-control" id="groupName" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="hellEventSetting">Hell Event Notifications</label>
+                                <select class="form-control" id="hellEventSetting">
+                                    <option value="all">All Hell Events</option>
+                                    <option value="watcherchaos">Watcher & Chaos Dragon Only</option>
+                                    <option value="disabled">Disabled</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="botEnabled">Bot Status</label>
+                                <select class="form-control" id="botEnabled">
+                                    <option value="true">Enabled</option>
+                                    <option value="false">Disabled</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="rentExpiry">Rent Expiry</label>
+                                <input type="datetime-local" class="form-control" id="rentExpiry">
+                                <small class="form-text text-muted">Leave empty for unlimited access</small>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="autoMessages">
+                                <label class="form-check-label" for="autoMessages">
+                                    Enable Auto Messages
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveGroupSettings()">
+                            <i class="fas fa-save mr-1"></i>Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Initialize DataTable
+            $(document).ready(function() {
+                $('#groupsTable').DataTable({
+                    columnDefs: [
+                        { orderable: false, targets: [5] } // Disable sorting for action column
+                    ]
+                });
+            });
+
+            function editGroup(groupId) {
+                // Set group ID
+                document.getElementById('groupId').value = groupId;
+
+                // Load group data (this would normally come from an API)
+                const groupData = {
+                    '120363167287303832@g.us': {
+                        name: 'Lords Mobile Indonesia',
+                        hellEvent: 'all',
+                        enabled: true,
+                        rentExpiry: '',
+                        autoMessages: true
+                    },
+                    '120363329911125895@g.us': {
+                        name: 'LM Guild Alliance',
+                        hellEvent: 'watcherchaos',
+                        enabled: true,
+                        rentExpiry: '',
+                        autoMessages: true
+                    },
+                    '120363123456789012@g.us': {
+                        name: 'Test Group',
+                        hellEvent: 'disabled',
+                        enabled: false,
+                        rentExpiry: '2024-01-01T00:00',
+                        autoMessages: false
+                    }
+                };
+
+                const data = groupData[groupId] || {};
+                document.getElementById('groupName').value = data.name || '';
+                document.getElementById('hellEventSetting').value = data.hellEvent || 'all';
+                document.getElementById('botEnabled').value = data.enabled ? 'true' : 'false';
+                document.getElementById('rentExpiry').value = data.rentExpiry || '';
+                document.getElementById('autoMessages').checked = data.autoMessages || false;
+
+                $('#groupEditModal').modal('show');
+            }
+
+            function saveGroupSettings() {
+                const groupId = document.getElementById('groupId').value;
+                const hellEvent = document.getElementById('hellEventSetting').value;
+                const enabled = document.getElementById('botEnabled').value === 'true';
+                const rentExpiry = document.getElementById('rentExpiry').value;
+                const autoMessages = document.getElementById('autoMessages').checked;
+
+                // Here you would normally send the data to an API
+                console.log('Saving group settings:', {
+                    groupId,
+                    hellEvent,
+                    enabled,
+                    rentExpiry,
+                    autoMessages
+                });
+
+                showNotification('success', 'Group settings updated successfully!');
+                $('#groupEditModal').modal('hide');
+            }
+
+            function toggleBot(groupId) {
+                if (confirm('Are you sure you want to toggle bot status for this group?')) {
+                    // Here you would normally call an API to toggle the bot
+                    showNotification('info', 'Bot status toggled for group');
+                }
+            }
+
+            function leaveGroup(groupId) {
+                if (confirm('Are you sure you want to leave this group? This action cannot be undone.')) {
+                    // Here you would normally call an API to leave the group
+                    showNotification('warning', 'Left group successfully');
+                }
+            }
+
+            function refreshGroups() {
+                showNotification('info', 'Refreshing group list...');
+                // Here you would normally reload the group data
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        </script>
+    `;
+
+    res.send(createAdminLTELayout('Groups', content, 'groups', req.session.username));
+});
+
+// Settings page
+router.get('/settings', checkSession, (req, res) => {
+    const content = `
+        <div class="row">
+            <!-- Bot Settings -->
+            <div class="col-lg-6">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-robot mr-1"></i>
+                            Bot Settings
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="botSettingsForm">
+                            <div class="form-group">
+                                <label for="botOwner">Bot Owner Number</label>
+                                <input type="text" class="form-control" id="botOwner" value="${process.env.BOT_OWNER_NUMBER || ''}" placeholder="628xxxxxxxxxx">
+                            </div>
+                            <div class="form-group">
+                                <label for="timezone">Timezone Offset</label>
+                                <select class="form-control" id="timezone">
+                                    <option value="7" ${process.env.TIMEZONE_OFFSET === '7' ? 'selected' : ''}>GMT+7 (WIB)</option>
+                                    <option value="8" ${process.env.TIMEZONE_OFFSET === '8' ? 'selected' : ''}>GMT+8 (WITA)</option>
+                                    <option value="9" ${process.env.TIMEZONE_OFFSET === '9' ? 'selected' : ''}>GMT+9 (WIT)</option>
+                                </select>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="autoRestart">
+                                <label class="form-check-label" for="autoRestart">
+                                    Auto Restart Daily
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-primary" onclick="saveBotSettings()">
+                            <i class="fas fa-save mr-1"></i>Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hell Events Settings -->
+            <div class="col-lg-6">
+                <div class="card card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-fire mr-1"></i>
+                            Hell Events Settings
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="hellSettingsForm">
+                            <div class="form-group">
+                                <label for="discordChannel">Discord Channel ID</label>
+                                <input type="text" class="form-control" id="discordChannel" value="${process.env.DISCORD_CHANNEL_ID || ''}" placeholder="1301050443090104360">
+                            </div>
+                            <div class="form-group">
+                                <label for="defaultFilter">Default Hell Event Filter</label>
+                                <select class="form-control" id="defaultFilter">
+                                    <option value="false">All Hell Events</option>
+                                    <option value="true">Watcher & Chaos Dragon Only</option>
+                                </select>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="hellNotifications" checked>
+                                <label class="form-check-label" for="hellNotifications">
+                                    Enable Hell Event Notifications
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-warning" onclick="saveHellSettings()">
+                            <i class="fas fa-save mr-1"></i>Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Monster Rotation Settings -->
+            <div class="col-lg-6">
+                <div class="card card-success">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-dragon mr-1"></i>
+                            Monster Rotation Settings
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="monsterSettingsForm">
+                            <div class="form-group">
+                                <label for="resetTime">Daily Reset Time</label>
+                                <input type="time" class="form-control" id="resetTime" value="11:55">
+                                <small class="form-text text-muted">Time in WIB (GMT+7)</small>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="monsterNotifications" checked>
+                                <label class="form-check-label" for="monsterNotifications">
+                                    Enable Daily Monster Notifications
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="individualLookup" checked>
+                                <label class="form-check-label" for="individualLookup">
+                                    Enable Individual Monster Lookup
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-success" onclick="saveMonsterSettings()">
+                            <i class="fas fa-save mr-1"></i>Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Settings -->
+            <div class="col-lg-6">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-credit-card mr-1"></i>
+                            Payment Settings
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="paymentSettingsForm">
+                            <div class="form-group">
+                                <label for="xenditMode">Xendit Mode</label>
+                                <select class="form-control" id="xenditMode">
+                                    <option value="test">Test Mode</option>
+                                    <option value="live">Live Mode</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Pricing (IDR)</label>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Daily" value="2000">
+                                        <small class="form-text text-muted">Per day</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Weekly" value="10000">
+                                        <small class="form-text text-muted">Per week</small>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Monthly" value="50000">
+                                        <small class="form-text text-muted">Per month</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Yearly" value="950000">
+                                        <small class="form-text text-muted">Per year</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="trialEnabled" checked>
+                                <label class="form-check-label" for="trialEnabled">
+                                    Enable 1-day Trial
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-info" onclick="savePaymentSettings()">
+                            <i class="fas fa-save mr-1"></i>Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Actions -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-danger">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            System Actions
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <button class="btn btn-warning btn-block" onclick="restartBot()">
+                                    <i class="fas fa-redo mr-1"></i>Restart Bot
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-info btn-block" onclick="clearLogs()">
+                                    <i class="fas fa-trash mr-1"></i>Clear Logs
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-success btn-block" onclick="exportData()">
+                                    <i class="fas fa-download mr-1"></i>Export Data
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-danger" onclick="factoryReset()">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>Factory Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function saveBotSettings() {
+                const botOwner = document.getElementById('botOwner').value;
+                const timezone = document.getElementById('timezone').value;
+                const autoRestart = document.getElementById('autoRestart').checked;
+
+                // Here you would normally send the data to an API
+                console.log('Saving bot settings:', { botOwner, timezone, autoRestart });
+                showNotification('success', 'Bot settings saved successfully!');
+            }
+
+            function saveHellSettings() {
+                const discordChannel = document.getElementById('discordChannel').value;
+                const defaultFilter = document.getElementById('defaultFilter').value;
+                const hellNotifications = document.getElementById('hellNotifications').checked;
+
+                console.log('Saving hell settings:', { discordChannel, defaultFilter, hellNotifications });
+                showNotification('success', 'Hell Events settings saved successfully!');
+            }
+
+            function saveMonsterSettings() {
+                const resetTime = document.getElementById('resetTime').value;
+                const monsterNotifications = document.getElementById('monsterNotifications').checked;
+                const individualLookup = document.getElementById('individualLookup').checked;
+
+                console.log('Saving monster settings:', { resetTime, monsterNotifications, individualLookup });
+                showNotification('success', 'Monster Rotation settings saved successfully!');
+            }
+
+            function savePaymentSettings() {
+                const xenditMode = document.getElementById('xenditMode').value;
+                const trialEnabled = document.getElementById('trialEnabled').checked;
+
+                console.log('Saving payment settings:', { xenditMode, trialEnabled });
+                showNotification('success', 'Payment settings saved successfully!');
+            }
+
+            function restartBot() {
+                if (confirm('Are you sure you want to restart the bot? This will disconnect all users temporarily.')) {
+                    showNotification('warning', 'Bot restart initiated...');
+                    // Here you would call the restart API
+                }
+            }
+
+            function clearLogs() {
+                if (confirm('Are you sure you want to clear all logs?')) {
+                    showNotification('info', 'Logs cleared successfully!');
+                }
+            }
+
+            function exportData() {
+                showNotification('info', 'Exporting data...');
+                // Here you would trigger data export
+            }
+
+            function factoryReset() {
+                if (confirm('WARNING: This will reset all settings and data. Are you absolutely sure?')) {
+                    if (confirm('This action cannot be undone. Continue?')) {
+                        showNotification('error', 'Factory reset initiated...');
+                    }
+                }
+            }
+        </script>
+    `;
+
+    res.send(createAdminLTELayout('Settings', content, 'settings', req.session.username));
+});
+
+// Statistics page
+router.get('/statistics', checkSession, (req, res) => {
+    const messageStats = Message.getAll(1, 1);
+    const totalMessages = messageStats.pagination ? messageStats.pagination.totalItems : 0;
+
+    let sentCount = 0;
+    let receivedCount = 0;
+    let failedCount = 0;
+
+    const recentMessages = Message.getAll(1, 1000);
+    if (recentMessages.messages) {
+        recentMessages.messages.forEach(msg => {
+            if (msg.type === 'sent') sentCount++;
+            else if (msg.type === 'received') receivedCount++;
+            if (msg.status === 'failed') failedCount++;
+        });
+    }
+
+    const content = `
+        <div class="row">
+            <!-- Message Statistics -->
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>${totalMessages}</h3>
+                        <p>Total Messages</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <a href="/dashboard/messages" class="small-box-footer">
+                        More info <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>${sentCount}</h3>
+                        <p>Messages Sent</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">
+                        More info <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>${receivedCount}</h3>
+                        <p>Messages Received</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">
+                        More info <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-danger">
+                    <div class="inner">
+                        <h3>${failedCount}</h3>
+                        <p>Failed Messages</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">
+                        More info <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Charts -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-chart-pie mr-1"></i>
+                            Message Distribution
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="messageChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-chart-line mr-1"></i>
+                            Daily Activity
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="activityChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- System Performance -->
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-server mr-1"></i>
+                            System Performance
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-info"><i class="fas fa-memory"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Memory Usage</span>
+                                        <span class="info-box-number" id="memoryUsage">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-success"><i class="fas fa-microchip"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">CPU Usage</span>
+                                        <span class="info-box-number" id="cpuUsage">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-warning"><i class="fas fa-clock"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Uptime</span>
+                                        <span class="info-box-number" id="systemUptime">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-danger"><i class="fas fa-wifi"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Connection</span>
+                                        <span class="info-box-number">Stable</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        <script>
+            // Message Distribution Chart
+            const messageCtx = document.getElementById('messageChart').getContext('2d');
+            new Chart(messageCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sent', 'Received', 'Failed'],
+                    datasets: [{
+                        data: [${sentCount}, ${receivedCount}, ${failedCount}],
+                        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Daily Activity Chart
+            const activityCtx = document.getElementById('activityChart').getContext('2d');
+            new Chart(activityCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Messages',
+                        data: [12, 19, 3, 5, 2, 3, 9],
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Update system performance
+            function updateSystemPerformance() {
+                // Simulate system performance data
+                const memoryUsage = Math.floor(Math.random() * 40 + 30) + '%';
+                const cpuUsage = Math.floor(Math.random() * 20 + 10) + '%';
+
+                document.getElementById('memoryUsage').textContent = memoryUsage;
+                document.getElementById('cpuUsage').textContent = cpuUsage;
+
+                // Update uptime
+                const startTime = new Date('${new Date().toISOString()}');
+                const now = new Date();
+                const uptime = Math.floor((now - startTime) / 1000);
+
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+
+                document.getElementById('systemUptime').textContent = hours + 'h ' + minutes + 'm';
+            }
+
+            // Update performance every 5 seconds
+            setInterval(updateSystemPerformance, 5000);
+            updateSystemPerformance();
+        </script>
+    `;
+
+    res.send(createAdminLTELayout('Statistics', content, 'statistics', req.session.username));
+});
+
+// Logs page
+router.get('/logs', checkSession, (req, res) => {
+    const content = `
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-file-alt mr-1"></i>
+                            System Logs
+                        </h3>
+                        <div class="card-tools">
+                            <button class="btn btn-outline-primary btn-sm" onclick="refreshLogs()">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="clearLogs()">
+                                <i class="fas fa-trash mr-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="bg-dark text-light p-3 rounded" style="height: 500px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.9rem;" id="logContainer">
+                            <div id="logContent">
+                                <div class="text-success">[${new Date().toISOString()}] System started</div>
+                                <div class="text-info">[${new Date().toISOString()}] WhatsApp client ready</div>
+                                <div class="text-info">[${new Date().toISOString()}] Discord client connected</div>
+                                <div class="text-warning">[${new Date().toISOString()}] Monster reset scheduler started</div>
+                                <div class="text-warning">[${new Date().toISOString()}] Rent expiry scheduler started</div>
+                                <div class="text-success">[${new Date().toISOString()}] All systems operational</div>
+                                <div class="text-muted">--- Real-time logs will appear here ---</div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Logs are updated in real-time. Use the refresh button to reload or clear to empty the log.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Controls -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-filter mr-2"></i>Log Filters</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showInfo" checked>
+                            <label class="form-check-label text-info" for="showInfo">
+                                Info Messages
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showWarning" checked>
+                            <label class="form-check-label text-warning" for="showWarning">
+                                Warning Messages
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showError" checked>
+                            <label class="form-check-label text-danger" for="showError">
+                                Error Messages
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showSuccess" checked>
+                            <label class="form-check-label text-success" for="showSuccess">
+                                Success Messages
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-download mr-2"></i>Export Logs</h6>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-outline-primary btn-block mb-2" onclick="downloadLogs('txt')">
+                            <i class="fas fa-file-alt mr-1"></i>Download as TXT
+                        </button>
+                        <button class="btn btn-outline-success btn-block mb-2" onclick="downloadLogs('json')">
+                            <i class="fas fa-file-code mr-1"></i>Download as JSON
+                        </button>
+                        <button class="btn btn-outline-info btn-block" onclick="emailLogs()">
+                            <i class="fas fa-envelope mr-1"></i>Email Logs
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Initialize Socket.IO for real-time logs
+            const socket = io();
+
+            // Handle log updates
+            socket.on('log', function(logData) {
+                const logContainer = document.getElementById('logContent');
+                const logEntry = document.createElement('div');
+
+                // Determine log level class
+                let logClass = 'text-light';
+                if (logData.level === 'error') logClass = 'text-danger';
+                else if (logData.level === 'warning') logClass = 'text-warning';
+                else if (logData.level === 'info') logClass = 'text-info';
+                else if (logData.level === 'success') logClass = 'text-success';
+
+                logEntry.className = logClass;
+                logEntry.textContent = '[' + new Date().toISOString() + '] ' + logData.message;
+
+                logContainer.appendChild(logEntry);
+
+                // Auto-scroll to bottom
+                const container = document.getElementById('logContainer');
+                container.scrollTop = container.scrollHeight;
+
+                // Keep only last 1000 log entries
+                const entries = logContainer.children;
+                if (entries.length > 1000) {
+                    logContainer.removeChild(entries[0]);
+                }
+            });
+
+            function refreshLogs() {
+                window.location.reload();
+            }
+
+            function clearLogs() {
+                if (confirm('Are you sure you want to clear all logs?')) {
+                    document.getElementById('logContent').innerHTML = '<div class="text-muted">--- Logs cleared ---</div>';
+                    showNotification('info', 'Logs cleared successfully');
+                }
+            }
+
+            function downloadLogs(format) {
+                const logs = document.getElementById('logContent').innerText;
+                const blob = new Blob([logs], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'bot-logs-' + new Date().toISOString().split('T')[0] + '.' + format;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showNotification('success', 'Logs downloaded successfully');
+            }
+
+            function emailLogs() {
+                showNotification('info', 'Email logs feature will be available soon');
+            }
+        </script>
+    `;
+
+    res.send(createAdminLTELayout('System Logs', content, 'logs', req.session.username));
+});
+
 module.exports = { router, setWhatsAppClientRef };

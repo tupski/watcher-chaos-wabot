@@ -67,6 +67,16 @@ app.use('/dashboard-old', dashboardRoutes);
 // AdminLTE Dashboard routes (new)
 app.use('/dashboard', adminlteRoutes);
 
+// Logout route
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error destroying session:', err);
+        }
+        res.redirect('/');
+    });
+});
+
 // Socket.io connection
 io.on('connection', (socket) => {
     console.log('New client connected');
@@ -76,7 +86,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Root route - redirect based on authentication
+// Root route - serve landing page
 app.get('/', (req, res) => {
     console.log('Root route accessed, session:', req.session ? 'exists' : 'none');
     console.log('Authenticated:', req.session ? req.session.authenticated : 'no session');
@@ -85,8 +95,8 @@ app.get('/', (req, res) => {
         console.log('Redirecting to /dashboard');
         res.redirect('/dashboard');
     } else {
-        console.log('Redirecting to /dashboard/login');
-        res.redirect('/dashboard/login');
+        console.log('Serving landing page');
+        res.sendFile(path.join(__dirname, 'public', 'landing.html'));
     }
 });
 

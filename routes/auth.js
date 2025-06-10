@@ -3,6 +3,55 @@ const router = express.Router();
 const fetch = require('node-fetch');
 const { URLSearchParams } = require('url');
 
+// Dashboard login endpoint
+router.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    // Get credentials from environment variables
+    const validUsername = process.env.DASHBOARD_USERNAME || 'admin';
+    const validPassword = process.env.DASHBOARD_PASSWORD || 'admin123';
+
+    if (!username || !password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Username and password are required'
+        });
+    }
+
+    if (username === validUsername && password === validPassword) {
+        // Set session
+        req.session.authenticated = true;
+        req.session.username = username;
+
+        return res.json({
+            success: true,
+            message: 'Login successful'
+        });
+    } else {
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid username or password'
+        });
+    }
+});
+
+// Logout endpoint
+router.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error logging out'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    });
+});
+
 // Discord OAuth2 configuration
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
