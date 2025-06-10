@@ -1040,27 +1040,49 @@ router.get('/bot-profile', checkSession, (req, res) => {
 
 // Commands page
 router.get('/commands', checkSession, (req, res) => {
-    const { getAllCommands } = require('../utils/whatsappUtils');
     const { getAllCommands: getCommandDatabase } = require('../utils/commandDatabase');
 
-    // Get all commands from both sources
-    const categorizedCommands = getAllCommands();
+    // Get all commands from database
     const commandDatabase = getCommandDatabase();
 
     let commandsHtml = '';
+    let categories = {};
+
+    // Categorize commands
+    Object.keys(commandDatabase).forEach(commandName => {
+        const cmd = commandDatabase[commandName];
+        let category = 'General';
+
+        // Categorize based on command name
+        if (['hell', 'monster'].includes(commandName)) {
+            category = 'Game Events';
+        } else if (['tagall', 'rent', 'enablebot', 'disablebot'].includes(commandName)) {
+            category = 'Group Management';
+        } else if (['ai', 'help', 'ping'].includes(commandName)) {
+            category = 'Utility';
+        } else if (['restart', 'status'].includes(commandName)) {
+            category = 'System';
+        }
+
+        if (!categories[category]) {
+            categories[category] = [];
+        }
+
+        categories[category].push({
+            name: commandName,
+            data: cmd
+        });
+    });
 
     // Build commands table with categories
-    Object.keys(categorizedCommands).forEach(category => {
-        const commands = categorizedCommands[category];
+    Object.keys(categories).forEach(category => {
+        const commands = categories[category];
 
-        commands.forEach(cmd => {
-            const commandName = cmd.command.replace('!', '').split(' ')[0];
-            const dbCommand = commandDatabase[commandName] || {};
-
-            const accessLevel = dbCommand.accessLevel || (cmd.adminOnly ? 'admin' : 'all');
-            const enabled = dbCommand.enabled !== false;
-            const description = dbCommand.description || cmd.description;
-            const message = dbCommand.message || '';
+        commands.forEach(({ name: commandName, data: cmd }) => {
+            const accessLevel = cmd.accessLevel || 'all';
+            const enabled = cmd.enabled !== false;
+            const description = cmd.description || '';
+            const message = (cmd.message || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, '\\n');
 
             let accessBadge = '';
             switch(accessLevel) {
@@ -1084,7 +1106,7 @@ router.get('/commands', checkSession, (req, res) => {
             commandsHtml += `
                 <tr data-category="${category}">
                     <td>
-                        <code>${cmd.command}</code>
+                        <code>!${commandName}</code>
                         <br><small class="text-muted">${category}</small>
                     </td>
                     <td>${description}</td>
@@ -1092,7 +1114,7 @@ router.get('/commands', checkSession, (req, res) => {
                     <td>${statusBadge}</td>
                     <td>
                         <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('${commandName}', '${description}', '${accessLevel}', '${message.replace(/'/g, "\\'")}', ${enabled})" title="Edit Command">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editCommand('${commandName}', '${description}', '${accessLevel}', '${message}', ${enabled})" title="Edit Command">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-${enabled ? 'danger' : 'success'}" onclick="toggleCommand('${commandName}', ${enabled})" title="${enabled ? 'Disable' : 'Enable'} Command">
@@ -1117,7 +1139,7 @@ router.get('/commands', checkSession, (req, res) => {
                             <div class="input-group input-group-sm" style="width: 200px;">
                                 <select class="form-control" id="categoryFilter" onchange="filterByCategory()">
                                     <option value="">All Categories</option>
-                                    ${Object.keys(categorizedCommands).map(category =>
+                                    ${Object.keys(categories).map(category =>
                                         `<option value="${category}">${category}</option>`
                                     ).join('')}
                                 </select>
@@ -1221,9 +1243,17 @@ router.get('/commands', checkSession, (req, res) => {
             function editCommand(commandName, description, accessLevel, message, enabled) {
                 // Set command data
                 document.getElementById('commandName').value = commandName;
+                document.getElementById('commandName').readOnly = true;
                 document.getElementById('commandDescription').value = description || '';
                 document.getElementById('commandAccess').value = accessLevel || 'all';
-                document.getElementById('commandMessage').value = message || '';
+
+                // Decode HTML entities and newlines
+                let decodedMessage = message || '';
+                decodedMessage = decodedMessage.replace(/&quot;/g, '"')
+                                               .replace(/&#39;/g, "'")
+                                               .replace(/\\n/g, '\n');
+
+                document.getElementById('commandMessage').value = decodedMessage;
                 document.getElementById('commandEnabled').checked = enabled;
 
                 $('#commandEditModal').modal('show');
@@ -1672,6 +1702,11 @@ router.get('/settings', checkSession, (req, res) => {
                                     <option value="9" ${process.env.TIMEZONE_OFFSET === '9' ? 'selected' : ''}>GMT+9 (WIT)</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label for="aiApiKey">AI API Key</label>
+                                <input type="password" class="form-control" id="aiApiKey" value="${process.env.AI_API_KEY || ''}" placeholder="Enter AI API Key">
+                                <small class="form-text text-muted">API Key for AI assistant functionality</small>
+                            </div>
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="autoRestart">
                                 <label class="form-check-label" for="autoRestart">
@@ -1866,6 +1901,7 @@ router.get('/settings', checkSession, (req, res) => {
             function saveBotSettings() {
                 const botOwner = document.getElementById('botOwner').value;
                 const timezone = document.getElementById('timezone').value;
+                const aiApiKey = document.getElementById('aiApiKey').value;
                 const autoRestart = document.getElementById('autoRestart').checked;
 
                 fetch('/api/settings/bot', {
@@ -1873,7 +1909,7 @@ router.get('/settings', checkSession, (req, res) => {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ botOwner, timezone, autoRestart })
+                    body: JSON.stringify({ botOwner, timezone, aiApiKey, autoRestart })
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -1960,13 +1996,30 @@ router.get('/settings', checkSession, (req, res) => {
 
             function clearLogs() {
                 if (confirm('Are you sure you want to clear all logs?')) {
-                    showNotification('info', 'Logs cleared successfully!');
+                    fetch('/api/settings/clear-logs', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('success', 'Logs cleared successfully!');
+                        } else {
+                            showNotification('error', 'Failed to clear logs: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('error', 'Error clearing logs');
+                    });
                 }
             }
 
             function exportData() {
                 showNotification('info', 'Exporting data...');
-                // Here you would trigger data export
+                window.open('/api/settings/export', '_blank');
             }
 
             function factoryReset() {

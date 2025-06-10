@@ -7,7 +7,7 @@ const path = require('path');
 // Bot settings endpoint
 router.post('/bot', checkSession, async (req, res) => {
     try {
-        const { botOwner, timezone, autoRestart } = req.body;
+        const { botOwner, timezone, aiApiKey, autoRestart } = req.body;
         
         // Read current .env file
         const envPath = path.join(__dirname, '..', '.env');
@@ -22,7 +22,8 @@ router.post('/bot', checkSession, async (req, res) => {
         const updatedLines = [];
         const varsToUpdate = {
             'BOT_OWNER_NUMBER': botOwner,
-            'TIMEZONE_OFFSET': timezone
+            'TIMEZONE_OFFSET': timezone,
+            'AI_API_KEY': aiApiKey
         };
         
         // Track which variables we've updated
@@ -54,6 +55,7 @@ router.post('/bot', checkSession, async (req, res) => {
         // Update process.env for current session
         process.env.BOT_OWNER_NUMBER = botOwner;
         process.env.TIMEZONE_OFFSET = timezone;
+        process.env.AI_API_KEY = aiApiKey;
         
         res.json({
             success: true,

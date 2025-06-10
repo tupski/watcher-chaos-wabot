@@ -16,16 +16,8 @@ async function getJoinedGroups(whatsappClient) {
         const joinedGroups = [];
         
         for (const group of groups) {
-            // Skip test groups and invalid groups
-            const groupName = group.name ? group.name.toLowerCase() : '';
-            const isTestGroup = groupName.includes('test') ||
-                               groupName.includes('testing') ||
-                               groupName.includes('tes ') ||
-                               groupName.includes('coba') ||
-                               groupName.includes('trial') ||
-                               groupName.includes('demo');
-
-            if (group.name && !isTestGroup && group.name.trim() !== '') {
+            // Include all groups with valid names
+            if (group.name && group.name.trim() !== '') {
                 joinedGroups.push({
                     id: group.id._serialized,
                     name: group.name,
