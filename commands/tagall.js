@@ -52,20 +52,20 @@ module.exports = async (client, message) => {
 
         for (let participant of participants) {
             try {
-                // Skip the bot itself
-                if (client.info && client.info.wid && participant.id._serialized === client.info.wid._serialized) {
-                    continue;
-                }
+            // Skip the bot itself
+            if (client.info && client.info.wid && participant.id._serialized === client.info.wid._serialized) {
+                continue;
+            }
 
-                // Add participant to mention
-                if (participant.id && participant.id.user) {
-                    mentionText += `@${participant.id.user} `;
-                    mentions.push(participant.id._serialized);
-                } else {
-                    console.log('Skipping participant with invalid ID structure:', participant);
-                }
+            // Add participant to mention
+            if (participant.id && participant.id.user) {
+                mentionText += `@${participant.id.user}\n`;
+                mentions.push(participant.id._serialized);
+            } else {
+                console.log('Skipping participant with invalid ID structure:', participant);
+            }
             } catch (error) {
-                console.log('Error processing participant:', participant, error.message);
+            console.log('Error processing participant:', participant, error.message);
             }
         }
 
