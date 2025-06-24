@@ -3,7 +3,7 @@ const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const qrcode = require('qrcode-terminal');
 const qr = require('qrcode');
-const { server, io, app, setWhatsAppClient } = require('./server');
+const { server, io, setWhatsAppClient, setPaymentWhatsAppClient } = require('./server');
 const Message = require('./models/message');
 const path = require('path');
 const fs = require('fs');
@@ -17,6 +17,9 @@ if (!fs.existsSync(dataDir)) {
 // Import command handlers
 const hellEventHandler = require('./commands/hell');
 const messageHandler = require('./handlers/messageHandler');
+const { startMonsterResetScheduler } = require('./handlers/monsterResetHandler');
+const { startRentExpiryScheduler } = require('./handlers/rentExpiryHandler');
+const { handleGroupJoin } = require('./handlers/groupJoinHandler');
 
 // Set the WhatsApp client for API routes (will be updated when client is ready)
 setWhatsAppClient(null);
@@ -34,7 +37,11 @@ const whatsappClient = new WhatsAppClient({
 
 // initialize Discord clients
 const discordClient = new DiscordClient({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ],
 });
 
 // qr code generator
@@ -62,10 +69,37 @@ whatsappClient.on('ready', () => {
 
     // Set the WhatsApp client for API routes
     setWhatsAppClient(whatsappClient);
-    console.log('WhatsApp client set for API routes');
+    setPaymentWhatsAppClient(whatsappClient);
+
+    // Set client for dashboard routes
+    const dashboardRoutes = require('./routes/dashboard');
+    if (dashboardRoutes.setWhatsAppClientRef) {
+        dashboardRoutes.setWhatsAppClientRef(whatsappClient);
+    }
+    console.log('WhatsApp client set for API and payment routes');
+
+    // Start monster reset scheduler
+    startMonsterResetScheduler(whatsappClient);
+
+    // Start rent expiry scheduler
+    startRentExpiryScheduler(whatsappClient);
+
+    // Send restart notification to BOT_OWNER
+    setTimeout(async () => {
+        try {
+            const { sendRestartNotification } = require('./commands/restart');
+            await sendRestartNotification(whatsappClient, 'after', 'Bot startup complete');
+        } catch (error) {
+            console.error('Error sending startup notification:', error);
+        }
+    }, 7000); // Wait 7 seconds for client to be fully ready
 
     // Notify web clients that WhatsApp is connected
     io.emit('whatsapp-connected');
+    io.emit('ready', {
+        phoneNumber: whatsappClient.info.wid.user,
+        platform: whatsappClient.info.platform || 'WhatsApp Web'
+    });
 });
 
 // Discord ready event
@@ -74,18 +108,20 @@ discordClient.on('ready', () => {
 });
 
 // Discord message event
-// Note: Since we're not using the MessageContent intent, we won't have access to message content
-// We'll just log that we received a message from the correct channel
 discordClient.on('messageCreate', async (message) => {
     console.log('Pesan diterima dari Discord channel:', message.channelId);
 
     // check if the message is from the correct channel
     if (message.channelId === process.env.DISCORD_CHANNEL_ID) {
         console.log('Memproses pesan karena channel ID cocok');
-        // Without MessageContent intent, we can't process the message content
-        // You'll need to enable the MessageContent intent in the Discord Developer Portal
-        // to make this work properly
-        console.log('Note: To process message content, enable MessageContent intent in Discord Developer Portal');
+        console.log('Message content:', message.content);
+
+        // Process Hell Event messages
+        try {
+            await hellEventHandler(whatsappClient, message);
+        } catch (error) {
+            console.error('Error processing Discord message for Hell Event:', error);
+        }
     } else {
         console.log('Pesan datang dari channel yang tidak cocok');
     }
@@ -99,6 +135,15 @@ discordClient.login(process.env.DISCORD_TOKEN)
     .catch((error) => {
         console.error('Failed to login to Discord client:', error);
     });
+
+// Handle WhatsApp group join events
+whatsappClient.on('group_join', async (notification) => {
+    try {
+        await handleGroupJoin(whatsappClient, notification);
+    } catch (error) {
+        console.error('Error handling group join:', error);
+    }
+});
 
 // Handle WhatsApp message events
 whatsappClient.on('message', async (message) => {

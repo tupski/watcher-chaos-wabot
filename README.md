@@ -27,12 +27,44 @@ Currently, the following feature is still under development:
 
 | Command   | Description                                    |
 |-----------|------------------------------------------------|
-| **`!tagall`** | A command that intends to tag all group members (currently unavailable). I am still working on this command. |
-| **`!hell`** | Displays the ongoing Hell Event data. If no events are currently active, it will show **"Not available."** and fetch last hell event. |
+| **`!tagall`** | Tags all group members with an optional message. Usage: `!tagall [message]` |
+| **`!hell`** | Displays the ongoing Hell Event data. If no events are currently active, it will show the last event time. |
+| **`!hell watcherchaos`** | Enable only Watcher/Chaos Dragon notifications (admin only) |
+| **`!hell all/on`** | Enable all Hell Event notifications (admin only) |
+| **`!hell off`** | Disable Hell Event notifications for this group (admin only) |
+| **`!hell status`** | Check current Hell Event notification settings |
+| **`!monster`** | Shows today and tomorrow monster rotation. Usage: `!monster` or `!monster [monster_name]` |
+| **`!ai`** | Ask AI assistant a question. Usage: `!ai <your question>` |
+| **`!cmd`** | Set command permissions (admin only). Usage: `!cmd <command> <admin/all>` |
+| **`!help`** | Show complete help and command reference |
 
 ### Anti Spam Link
-> **`Currently not working`**
-* This feature is designed to block or prevent the spread of harmful, spammy, or unwanted links in WhatsApp groups. With this feature, users will be protected from suspicious and potentially harmful links.
+* This feature automatically blocks or prevents the spread of harmful, spammy, or unwanted links in WhatsApp groups.
+* Configure allowed links in the `ALLOWED_LINKS` environment variable (comma-separated).
+
+### Monster Rotation
+* Displays daily monster rotation schedule for Lords Mobile
+* Automatic notifications at 11:55 AM (GMT+7) when monsters reset
+* Search specific monsters to see when they will spawn
+* 12-day rotation cycle with monsters like Gargantua, Hardrox, Jade Wyrm, etc.
+
+### AI Assistant
+* Powered by Google Gemini AI for intelligent responses
+* Ask questions using `!ai <your question>`
+* Quotes user questions and provides detailed answers
+* Safety filters enabled for appropriate responses
+
+### Permission Management
+* Per-group command permissions (admin/all members)
+* Hell Event notification preferences per group
+* Settings are isolated per group (won't affect other groups)
+* Admin-only commands: `!cmd` and Hell Event settings
+
+### Enhanced Hell Event System
+* Configurable notifications: all events, Watcher/Chaos only, or disabled
+* Per-group settings for notification preferences
+* Automatic filtering based on group preferences
+* Status checking with `!hell status`
 ---
 
 ## 🛠️ Features & Output
@@ -135,7 +167,77 @@ After successful startup, you should see:
 
 ---
 
-## 🙏 Acknowledgements
+## � Troubleshooting
+
+### Common Issues and Solutions
+
+#### Commands Not Working (!tagall, !hell)
+1. **Check if the bot is properly authenticated with WhatsApp**
+   - Make sure you've scanned the QR code successfully
+   - Check the console for "WhatsApp client is ready!" message
+
+2. **Verify environment variables**
+   - Ensure `.env` file exists and contains all required variables
+   - Check that `DISCORD_TOKEN` is set correctly (see DISCORD_SETUP.md)
+
+3. **Discord Bot Issues**
+   - Enable MESSAGE CONTENT intent in Discord Developer Portal
+   - Verify the bot has proper permissions in your Discord server
+   - Check that `DISCORD_CHANNEL_ID` matches your target channel
+
+#### Tagall Command Issues
+1. **"This command can only be used in group chats" Error**
+   - Ensure you're using the command in a WhatsApp group, not private chat
+   - Check console logs for group detection details
+   - Bot will show group info in logs for debugging
+
+2. **No Mentions Working**
+   - Ensure bot has been added to the group properly
+   - Check if group participants are loaded correctly
+   - Bot needs to fetch participants which may take a moment
+
+#### Anti Spam Link Not Working
+1. **Check ALLOWED_LINKS configuration**
+   - Ensure `ALLOWED_LINKS` is set in your `.env` file
+   - Use comma-separated values for multiple allowed domains
+   - Example: `ALLOWED_LINKS=https://example.com,https://trusted-site.com`
+
+2. **Bot Permissions and Configuration**
+   - Bot must be admin in WhatsApp group to delete messages
+   - If bot can't delete messages, it will send warning instead
+   - Supported link formats: `https://`, `http://`, `www.`, and `domain.com`
+   - Configure `ALLOWED_LINKS` with domain names only (no http/https needed)
+   - Example: `ALLOWED_LINKS=example.com,google.com,github.com`
+
+#### Hell Event Filter Configuration
+1. **ONLY_WATCHER_CHAOS Setting**
+   - Set `ONLY_WATCHER_CHAOS=true` to only receive Watcher/Chaos Dragon notifications
+   - Set `ONLY_WATCHER_CHAOS=false` to receive all Hell Event notifications
+   - The `!hell` command always shows the latest event regardless of filter setting
+
+#### Hell Command Shows "Data tidak tersedia"
+1. **Discord Integration Issues**
+   - Verify Discord bot token is correct
+   - Check if the bot is in the correct Discord server
+   - Ensure MESSAGE CONTENT intent is enabled
+   - Verify `DISCORD_CHANNEL_ID` is correct
+
+2. **No Hell Event Data**
+   - The bot needs to receive at least one Hell Event message from Discord first
+   - Check Discord channel for Hell Event messages in the correct format
+
+#### Installation Issues
+1. **Node.js Not Found**
+   - Install Node.js from [nodejs.org](https://nodejs.org/)
+   - Verify installation with `node --version` and `npm --version`
+
+2. **Dependencies Issues**
+   - Run `npm install` to install all dependencies
+   - If issues persist, try `npm ci` for clean install
+
+---
+
+## �🙏 Acknowledgements
 We would like to express our deepest gratitude to [HephBot](https://hephbot.com) for creating and sharing their amazing **Hell Event Bot**. Their contributions paved the way for this integration, and we are truly thankful for their work and dedication.
 
 ---

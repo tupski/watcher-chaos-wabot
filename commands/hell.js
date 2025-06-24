@@ -23,6 +23,9 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
  * If an event is detected, it calculates the time remaining and formats a message to be sent to WhatsApp groups.
  * It handles errors during message processing and logs any issues encountered.
  */
+const { shouldReceiveHellNotifications, isBotActiveInGroup, updateGroupSettings, getGroupSettings } = require('../utils/groupSettings');
+const { canExecuteAdminCommand, logBotOwnerAction, isBotOwner } = require('../utils/botOwnerUtils');
+
 module.exports = async (whatsappClient, message) => {
     const whatsappGroupIds = process.env.WHATSAPP_GROUP_IDS ? process.env.WHATSAPP_GROUP_IDS.split(',') : [];
 
@@ -51,14 +54,63 @@ module.exports = async (whatsappClient, message) => {
                     const { content, attachments, createdTimestamp } = discordMessage;
 
                     // Check if the message contains Hell Event information
-                    const regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
-                    const matches = content ? content.match(regex) : null;
+                    // Try format with task first: Hell | Reward | Task | Xm left | XK
+                    let regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
+                    let matches = content ? content.match(regex) : null;
+
+                    // If no match, try format without task: Hell | Reward | Xm left | XK
+                    if (!matches) {
+                        regex = /Hell\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
+                        matches = content ? content.match(regex) : null;
+                    }
 
                     if (matches) {
-                        const eventName = matches[1].trim(); // Reward(s)
-                        const taskName = matches[2].trim(); // Task(s)
-                        const minutesLeft = parseInt(matches[3]); // Time left in minutes
-                        const points = matches[4].trim(); // Phase 3 points
+                        let eventName, taskName, minutesLeft, points;
+
+                        if (matches.length === 5) {
+                            // Format with 2 parts: Hell | Part1 | Part2 | Xm left | XK
+                            const part1 = matches[1].trim();
+                            const part2 = matches[2].trim();
+                            minutesLeft = parseInt(matches[3]);
+                            points = matches[4].trim();
+
+                            // Check if part1 contains special rewards (Watcher, Chaos Dragon, Ancient Core, Red Orb, etc.)
+                            const specialRewards = ['watcher', 'chaos dragon', 'ancient core', 'red orb', 'speed up', 'gem', 'gold'];
+                            const hasSpecialReward = specialRewards.some(reward =>
+                                part1.toLowerCase().includes(reward)
+                            );
+
+                            if (hasSpecialReward) {
+                                // Part1 is reward, Part2 is task
+                                eventName = part1;
+                                taskName = part2;
+                            } else {
+                                // Part1 is task, Part2 is also task (or empty)
+                                eventName = ''; // No special reward
+                                taskName = part2 ? `${part1}, ${part2}` : part1;
+                            }
+                        } else {
+                            // Format with 1 part: Hell | Part1 | Xm left | XK
+                            const part1 = matches[1].trim();
+                            minutesLeft = parseInt(matches[2]);
+                            points = matches[3].trim();
+
+                            // Check if part1 contains special rewards
+                            const specialRewards = ['watcher', 'chaos dragon', 'ancient core', 'red orb', 'speed up', 'gem', 'gold'];
+                            const hasSpecialReward = specialRewards.some(reward =>
+                                part1.toLowerCase().includes(reward)
+                            );
+
+                            if (hasSpecialReward) {
+                                // Part1 is reward
+                                eventName = part1;
+                                taskName = '';
+                            } else {
+                                // Part1 is task
+                                eventName = '';
+                                taskName = part1;
+                            }
+                        }
 
                         // Get the message timestamp
                         const discordTimestamp = moment(createdTimestamp).utcOffset(process.env.TIMEZONE_OFFSET || 7);
@@ -71,62 +123,141 @@ module.exports = async (whatsappClient, message) => {
 
                         // Calculate remaining time
                         const timeLeftMinutes = Math.max(0, Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes()));
-                        const timeLeftFormatted = `${timeLeftMinutes}m left`;
 
-                        // Format the message
-                        let replyMessage = `🔥 *Hell Event* 🔥\n\n`;
-                        replyMessage += `*Reward(s):* ${eventName}\n`;
-                        replyMessage += `*Task(s):* ${taskName}\n`;
-                        replyMessage += `*Time left:* ${timeLeftFormatted}\n`;
-                        replyMessage += `*Phase 3:* ${points}\n\n`;
-                        replyMessage += `Message received at: *${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+                        // Check if we should filter based on group setting or ONLY_WATCHER_CHAOS setting
+                        // For WhatsApp command, use group setting; for Discord auto-notification, use global setting
+                        const { getGroupSettings } = require('../utils/groupSettings');
+                        let onlyWatcherChaos = process.env.ONLY_WATCHER_CHAOS === 'true'; // Default from .env
 
-                        // Check if there's an image attachment
-                        const imageAttachment = attachments.find(attachment =>
-                            attachment.contentType && attachment.contentType.startsWith('image/'));
-
-                        if (imageAttachment) {
-                            // Download the image
-                            const imageUrl = imageAttachment.url;
-                            const imageResponse = await fetch(imageUrl);
-                            const imageBuffer = await imageResponse.buffer();
-
-                            // Save the image temporarily
-                            const imagePath = path.join(__dirname, '..', 'data', 'temp_image.jpg');
-                            fs.writeFileSync(imagePath, imageBuffer);
-
-                            // Send the image with the caption
-                            await message.reply({
-                                body: replyMessage,
-                                media: fs.readFileSync(imagePath)
-                            });
-
-                            // Clean up the temporary image
-                            fs.unlinkSync(imagePath);
-                        } else {
-                            // No image, just send the text
-                            await message.reply(replyMessage);
+                        // If this is a WhatsApp command (!hell), check group setting
+                        if (isWhatsAppMessage && message.from) {
+                            const groupSettings = getGroupSettings(message.from);
+                            if (groupSettings.hellNotifications === 'watcherchaos') {
+                                onlyWatcherChaos = true;
+                            } else if (groupSettings.hellNotifications === 'all') {
+                                onlyWatcherChaos = false;
+                            }
                         }
 
-                        // Save the event data for future reference
-                        saveHellEvent({
-                            eventName,
-                            taskName,
-                            points,
-                            timestamp: discordTimestamp.toISOString(),
-                            endTime: eventEndTime.toISOString(),
-                            minutesLeft,
-                            imageUrl: imageAttachment ? imageAttachment.url : null
-                        });
+                        const isWatcherOrChaos = eventName.toLowerCase().includes('watcher') ||
+                                               eventName.toLowerCase().includes('chaos dragon');
 
-                        return;
+                        if (timeLeftMinutes > 0) {
+                            // Current event is still active
+                            const timeLeftFormatted = `${timeLeftMinutes}m left`;
+
+                            // Format the message
+                            let replyMessage = `🔥 *Hell Event* 🔥\n\n`;
+                            if (eventName && eventName.trim() !== '') {
+                                replyMessage += `*Reward(s)*: ${eventName}\n`;
+                            }
+                            if (taskName && taskName.trim() !== '') {
+                                replyMessage += `*Task(s)*: ${taskName}\n`;
+                            }
+                            replyMessage += `*Time left*: ${timeLeftFormatted}\n`;
+                            replyMessage += `*Phase 3 points*: ${points}\n\n`;
+                            replyMessage += `Message received at: *${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+
+                            await message.reply(replyMessage);
+
+                            // Save the event data
+                            const imageAttachment = attachments.find(attachment =>
+                                attachment.contentType && attachment.contentType.startsWith('image/'));
+
+                            saveHellEvent({
+                                eventName,
+                                taskName,
+                                points,
+                                timestamp: discordTimestamp.toISOString(),
+                                endTime: eventEndTime.toISOString(),
+                                minutesLeft,
+                                imageUrl: imageAttachment ? imageAttachment.url : null
+                            });
+
+                            return;
+                        } else {
+                            // Current event has ended, show "no event" message with current event details
+                            let replyMessage;
+
+                            if (onlyWatcherChaos) {
+                                // Show specific message for Watcher/Chaos filter
+                                replyMessage = `🔥 *Hell Event Watcher* 🔥\n\n`;
+                                replyMessage += `No Hell Event for Watcher and Chaos Dragon at this moment.\n\n`;
+                                replyMessage += `Last event at:\n`;
+                                replyMessage += `${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)\n\n`;
+                                if (eventName && eventName.trim() !== '') {
+                                    replyMessage += `*Reward*: ${eventName}\n`;
+                                }
+                                if (taskName && taskName.trim() !== '') {
+                                    replyMessage += `*Task*: ${taskName}\n`;
+                                }
+                                replyMessage += `-------------------------------------------\n\n`;
+
+                                // Check if current event is Watcher/Chaos Dragon
+                                if (isWatcherOrChaos) {
+                                    replyMessage += `🔥 *Hell Event* 🔥\n\n`;
+                                    if (eventName && eventName.trim() !== '') {
+                                        replyMessage += `*Reward(s)*: ${eventName}\n`;
+                                    }
+                                    if (taskName && taskName.trim() !== '') {
+                                        replyMessage += `*Task(s)*: ${taskName}\n`;
+                                    }
+                                    replyMessage += `*Time left*: Event ended\n`;
+                                    replyMessage += `*Phase 3 points*: ${points}\n\n`;
+                                    replyMessage += `Message received at: *${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+                                }
+                            } else {
+                                // Show current event regardless of type
+                                replyMessage = `🔥 *Hell Event* 🔥\n\n`;
+                                if (eventName && eventName.trim() !== '') {
+                                    replyMessage += `*Reward(s)*: ${eventName}\n`;
+                                }
+                                if (taskName && taskName.trim() !== '') {
+                                    replyMessage += `*Task(s)*: ${taskName}\n`;
+                                }
+                                replyMessage += `*Time left*: Event ended\n`;
+                                replyMessage += `*Phase 3 points*: ${points}\n\n`;
+                                replyMessage += `Message received at: *${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+                            }
+
+                            await message.reply(replyMessage);
+
+                            // Save the event data
+                            const imageAttachment = attachments.find(attachment =>
+                                attachment.contentType && attachment.contentType.startsWith('image/'));
+
+                            saveHellEvent({
+                                eventName,
+                                taskName,
+                                points,
+                                timestamp: discordTimestamp.toISOString(),
+                                endTime: eventEndTime.toISOString(),
+                                minutesLeft,
+                                imageUrl: imageAttachment ? imageAttachment.url : null
+                            });
+
+                            return;
+                        }
                     } else {
                         // No Hell Event information found in the latest message
-                        await message.reply(
-                            "🔥 *Hell Event Watcher* 🔥\n\n" +
-                            "The latest Discord message does not contain Hell Event information.\n\n" +
-                            "No Hell Watcher / Chaos right now."
-                        );
+                        // Check for last saved event data
+                        let lastEventData = getLastHellEvent();
+                        if (lastEventData && lastEventData.timestamp) {
+                            const lastEventTime = moment(lastEventData.timestamp).utcOffset(process.env.TIMEZONE_OFFSET || 7);
+                            await message.reply(
+                                "🔥 *Hell Event Watcher* 🔥\n\n" +
+                                "No Hell Event for Watcher and Chaos Dragon at the moment.\n\n" +
+                                `Last event at: *${lastEventTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\n\n` +
+                                `*Reward*: ${lastEventData.eventName}\n` +
+                                `*Task*: ${lastEventData.taskName}`
+                            );
+                        } else {
+                            await message.reply(
+                                "🔥 *Hell Event Watcher* 🔥\n\n" +
+                                "No Hell Event for Watcher and Chaos Dragon at the moment.\n\n" +
+                                "Last event at: *Data not available*"
+                            );
+                        }
                         return;
                     }
                 } else {
@@ -144,8 +275,10 @@ module.exports = async (whatsappClient, message) => {
                         if (now.diff(eventTime, 'hours') >= 1) {
                             await message.reply(
                                 "🔥 *Hell Event Watcher* 🔥\n\n" +
-                                "No Hell Watcher / Chaos right now.\n\n" +
-                                `Last event was more than 1 hour ago at *${eventTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`
+                                "No Hell Event for Watcher and Chaos Dragon at the moment.\n\n" +
+                                `Last event was more than 1 hour ago at *${eventTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\n\n` +
+                                `*Reward*: ${lastEventData.eventName}\n` +
+                                `*Task*: ${lastEventData.taskName}`
                             );
                             return;
                         }
@@ -153,9 +286,10 @@ module.exports = async (whatsappClient, message) => {
                         console.log('Using saved event data as fallback...');
 
                         // Check if the event is still active
-                        if (now.isBefore(eventEndTime)) {
-                            // Event is still active, calculate remaining time
-                            const timeLeftMinutes = Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes());
+                        const timeLeftMinutes = Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes());
+
+                        if (timeLeftMinutes > 0) {
+                            // Event is still active, show the event details
                             const timeLeftFormatted = `${timeLeftMinutes}m left`;
 
                             let replyMessage = `🔥 *Hell Event* 🔥\n\n`;
@@ -197,11 +331,13 @@ module.exports = async (whatsappClient, message) => {
                                 return;
                             }
                         } else {
-                            // Event has ended
+                            // Event has ended - show "no event" message
                             await message.reply(
                                 "🔥 *Hell Event Watcher* 🔥\n\n" +
-                                "No active Hell Events at the moment.\n\n" +
-                                `Last event ended at *${eventEndTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`
+                                "No Hell Event for Watcher and Chaos Dragon at the moment.\n\n" +
+                                `Last event at: *${eventEndTime.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\n\n` +
+                                `*Reward*: ${lastEventData.eventName}\n` +
+                                `*Task*: ${lastEventData.taskName}`
                             );
                             return;
                         }
@@ -209,8 +345,8 @@ module.exports = async (whatsappClient, message) => {
                         // No saved data
                         await message.reply(
                             "🔥 *Hell Event Watcher* 🔥\n\n" +
-                            "No Hell Watcher / Chaos right now.\n\n" +
-                            "No previous event data found."
+                            "No Hell Event for Watcher and Chaos Dragon at the moment.\n\n" +
+                            "Last event at: *Data not available*"
                         );
                         return;
                     }
@@ -227,15 +363,98 @@ module.exports = async (whatsappClient, message) => {
         const content = message.content;
 
         // Regular expression to match Hell Event details in the message content
-        // Format: Hell | Red Orb, Ancient Core | Merging, Building | 59m left | 441K
-        const regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
-        const matches = content ? content.match(regex) : null;
+        // Format examples:
+        // Hell | Watcher | Building | 58m left | 590K (with task)
+        // Hell | Chaos Dragon | Tycoon | 58m left | 175K (with task)
+        // Hell | Building | 59m left | 230K (without task)
+        // Hell | Ancient Core, Red Orb | Merging, Building, Research | 58m left | 630K (with task)
+
+        // Try format with task first: Hell | Reward | Task | Xm left | XK
+        let regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
+        let matches = content ? content.match(regex) : null;
+
+        // If no match, try format without task: Hell | Reward | Xm left | XK
+        if (!matches) {
+            regex = /Hell\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
+            matches = content ? content.match(regex) : null;
+        }
 
         if (matches) {
-            const eventName = matches[1].trim(); // Nama event
-            const taskName = matches[2].trim(); // Nama task
-            const minutesLeft = parseInt(matches[3]); // Sisa waktu dalam menit
-            const points = matches[4].trim(); // Jumlah poin yang diperoleh
+            let eventName, taskName, minutesLeft, points;
+
+            if (matches.length === 5) {
+                // Format with 2 parts: Hell | Part1 | Part2 | Xm left | XK
+                const part1 = matches[1].trim();
+                const part2 = matches[2].trim();
+                minutesLeft = parseInt(matches[3]);
+                points = matches[4].trim();
+
+                // Check if part1 contains special rewards (Watcher, Chaos Dragon, Ancient Core, Red Orb, etc.)
+                const specialRewards = ['watcher', 'chaos dragon', 'ancient core', 'red orb', 'speed up', 'gem', 'gold'];
+                const hasSpecialReward = specialRewards.some(reward =>
+                    part1.toLowerCase().includes(reward)
+                );
+
+                if (hasSpecialReward) {
+                    // Part1 is reward, Part2 is task
+                    eventName = part1;
+                    taskName = part2;
+                } else {
+                    // Part1 is task, Part2 is also task (or empty)
+                    eventName = ''; // No special reward
+                    taskName = part2 ? `${part1}, ${part2}` : part1;
+                }
+            } else {
+                // Format with 1 part: Hell | Part1 | Xm left | XK
+                const part1 = matches[1].trim();
+                minutesLeft = parseInt(matches[2]);
+                points = matches[3].trim();
+
+                // Check if part1 contains special rewards
+                const specialRewards = ['watcher', 'chaos dragon', 'ancient core', 'red orb', 'speed up', 'gem', 'gold'];
+                const hasSpecialReward = specialRewards.some(reward =>
+                    part1.toLowerCase().includes(reward)
+                );
+
+                if (hasSpecialReward) {
+                    // Part1 is reward
+                    eventName = part1;
+                    taskName = '';
+                } else {
+                    // Part1 is task
+                    eventName = '';
+                    taskName = part1;
+                }
+            }
+
+            // Check if we should filter for only Watcher/Chaos Dragon events
+            // Priority: Group setting > Global .env setting
+            const { getGroupSettings } = require('../utils/groupSettings');
+            const groupSettings = getGroupSettings(message.from || 'global');
+
+            // Use group setting if available, otherwise fall back to .env
+            let onlyWatcherChaos;
+            if (groupSettings.hellNotifications === 'watcherchaos') {
+                onlyWatcherChaos = true;
+            } else if (groupSettings.hellNotifications === 'all') {
+                onlyWatcherChaos = false;
+            } else {
+                // Fall back to .env setting
+                onlyWatcherChaos = process.env.ONLY_WATCHER_CHAOS === 'true';
+            }
+
+            const isWatcherOrChaos = eventName && (eventName.toLowerCase().includes('watcher') ||
+                                    eventName.toLowerCase().includes('chaos dragon'));
+
+            console.log(`Found Hell Event: Reward="${eventName}" | Task="${taskName}" | ${minutesLeft}m left | ${points}`);
+            console.log(`Filter setting: Group=${groupSettings.hellNotifications}, Env=${process.env.ONLY_WATCHER_CHAOS}, Final=${onlyWatcherChaos}, isWatcherOrChaos=${isWatcherOrChaos}`);
+
+            if (onlyWatcherChaos && !isWatcherOrChaos) {
+                console.log(`Filtering out non-Watcher/Chaos event: Reward="${eventName}" Task="${taskName}"`);
+                return; // Skip this event
+            }
+
+            console.log(`Processing Hell Event: ${eventName} | ${taskName} | ${minutesLeft}m left | ${points}`);
 
             // Timestamp Discord di-convert menjadi UTC+7
             const discordTimestamp = moment(message.createdAt).utcOffset(process.env.TIMEZONE_OFFSET || 7);
@@ -258,31 +477,80 @@ module.exports = async (whatsappClient, message) => {
 
             let msgText = '';
 
-            // Jika event sudah berakhir, maka tampilkan pesan "not available right now."
-            if (now.isAfter(eventEndTime)) {
-                msgText = `Hell Watcher/Chaos Dragon *not available right now.*\nLast event at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*\nEvent: *${eventName}*\nTask: *${taskName}*`;
+            // Check if event is still active or has ended
+            const currentMinutesLeft = Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes());
+
+            if (currentMinutesLeft <= 0) {
+                // Event has ended - don't send automatic message for ended events
+                console.log('Event has ended, not sending automatic message');
+                return;
             } else {
-                // Hitung waktu yang tersisa dalam format "Xm left"
-                let timeLeftFormatted = `${Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes())}m left`;
+                // Hitung waktu yang tersisa dalam menit
+                const minutesLeft = Math.ceil(moment.duration(eventEndTime.diff(now)).asMinutes());
+                let timeLeftFormatted;
+
+                if (minutesLeft <= 0) {
+                    // Event sudah berakhir, hitung berapa jam yang lalu
+                    const hoursAgo = Math.floor(moment.duration(now.diff(eventEndTime)).asHours());
+                    if (hoursAgo === 1) {
+                        timeLeftFormatted = `Ended 1 hour ago`;
+                    } else if (hoursAgo > 1) {
+                        timeLeftFormatted = `Ended ${hoursAgo} hours ago`;
+                    } else {
+                        // Kurang dari 1 jam, tampilkan dalam menit
+                        const minutesAgo = Math.floor(moment.duration(now.diff(eventEndTime)).asMinutes());
+                        timeLeftFormatted = `Ended ${minutesAgo}m ago`;
+                    }
+                } else {
+                    timeLeftFormatted = `${minutesLeft}m left`;
+                }
 
                 // Buat pesan yang akan dikirim ke WhatsApp groups
-                // Format the message according to the new requirements
-                // Red Orb, Ancient Core : Reward(s)
-                // Merging, Building : Task(s)
-                // 59m left : time left (calculated)
-                // 441K : Phase 3 points
+                // Format pesan berdasarkan apakah ada reward atau hanya task
                 msgText = `🔥 *Hell Event* 🔥\n\n`;
-                msgText += `*${eventName}* : Reward(s)\n`;
-                msgText += `*${taskName}* : Task(s)\n`;
-                msgText += `*${timeLeftFormatted}* : Time left\n`;
-                msgText += `*${points}* : Phase 3 points\n\n`;
-                msgText += `Message received at: *${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+                if (eventName && eventName.trim() !== '') {
+                    msgText += `*Reward(s)*: ${eventName}\n`;
+                }
+                if (taskName && taskName.trim() !== '') {
+                    msgText += `*Task(s)*: ${taskName}\n`;
+                }
+                msgText += `*Time left*: ${timeLeftFormatted}\n`;
+                msgText += `*Phase 3 points*: ${points}\n\n`;
+                msgText += `Message received at:*\n${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
             }
 
             // Only send to WhatsApp groups if there are any configured
             if (whatsappGroupIds.length > 0) {
                 for (const groupId of whatsappGroupIds) {
                     try {
+                        // Check if bot is active in this group (considering both normal enable and rent)
+                        if (!isBotActiveInGroup(groupId.trim())) {
+                            console.log(`Skipping group ${groupId} - bot is not active`);
+                            continue;
+                        }
+
+                        // Check if this group should receive hell notifications
+                        // Use group-specific setting, not global .env setting
+                        const { getGroupSettings } = require('../utils/groupSettings');
+                        const groupSettings = getGroupSettings(groupId.trim());
+
+                        let shouldSendToGroup = true;
+
+                        // Check group-specific hell notification setting
+                        if (groupSettings.hellNotifications === 'off') {
+                            shouldSendToGroup = false;
+                        } else if (groupSettings.hellNotifications === 'watcherchaos') {
+                            shouldSendToGroup = isWatcherOrChaos;
+                        } else {
+                            // 'all' or undefined (default to all)
+                            shouldSendToGroup = true;
+                        }
+
+                        if (!shouldSendToGroup) {
+                            console.log(`Skipping group ${groupId} - group setting: ${groupSettings.hellNotifications}, isWatcherOrChaos: ${isWatcherOrChaos}`);
+                            continue;
+                        }
+
                         // Ambil daftar chat WhatsApp
                         const chats = await whatsappClient.getChats();
                         const chat = chats.find(c => c.id._serialized === groupId.trim());
@@ -401,20 +669,31 @@ async function fetchLatestDiscordMessage() {
         }
 
         // Find the latest message with Hell Event information
-        const regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
-
         for (const [_, msg] of messages) {
-            if (msg.content && regex.test(msg.content)) {
-                console.log('Found Hell Event message:', msg.content);
+            if (msg.content) {
+                // Try format with task first: Hell | Reward | Task | Xm left | XK
+                let regex = /Hell\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
+                let matches = msg.content.match(regex);
 
-                // Destroy the client before returning
-                await client.destroy();
+                // If no match, try format without task: Hell | Reward | Xm left | XK
+                if (!matches) {
+                    regex = /Hell\s*\|\s*([^|]+)\s*\|\s*(\d+)(?:m| minutes) left\s*\|\s*([\d.]+K)/;
+                    matches = msg.content.match(regex);
+                }
 
-                return {
-                    content: msg.content,
-                    attachments: Array.from(msg.attachments.values()),
-                    createdTimestamp: msg.createdTimestamp
-                };
+                if (matches) {
+                    console.log('Found Hell Event message:', msg.content);
+
+                    // For !hell command, always return the latest message regardless of filter
+                    // The filter is only applied for automatic notifications
+                    await client.destroy();
+
+                    return {
+                        content: msg.content,
+                        attachments: Array.from(msg.attachments.values()),
+                        createdTimestamp: msg.createdTimestamp
+                    };
+                }
             }
         }
 

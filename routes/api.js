@@ -41,6 +41,89 @@ router.delete('/messages/:id', (req, res) => {
 });
 
 /**
+ * DELETE /api/messages/clear
+ * Clear all messages
+ */
+router.delete('/messages/clear', (req, res) => {
+    try {
+        // Clear all messages from database
+        const db = require('../utils/database');
+        const success = db.clearAllMessages();
+
+        if (success) {
+            res.json({ success: true, message: 'All messages cleared successfully' });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to clear messages' });
+        }
+    } catch (error) {
+        console.error('Error clearing messages:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+/**
+ * POST /api/logout
+ * Logout from WhatsApp
+ */
+router.post('/logout', async (req, res) => {
+    try {
+        if (!whatsappClient) {
+            return res.status(400).json({ success: false, message: 'WhatsApp client not available' });
+        }
+
+        // Logout from WhatsApp
+        await whatsappClient.logout();
+
+        res.json({ success: true, message: 'Successfully logged out from WhatsApp' });
+    } catch (error) {
+        console.error('Error logging out from WhatsApp:', error);
+        res.status(500).json({ success: false, message: 'Failed to logout from WhatsApp' });
+    }
+});
+
+/**
+ * GET /api/commands
+ * Get all command messages and settings
+ */
+router.get('/commands', (req, res) => {
+    try {
+        const commandDb = require('../utils/commandDatabase');
+        const commands = commandDb.getAllCommands();
+        res.json({ success: true, data: commands });
+    } catch (error) {
+        console.error('Error getting commands:', error);
+        res.status(500).json({ success: false, message: 'Failed to get commands' });
+    }
+});
+
+/**
+ * POST /api/commands/:command
+ * Update command message and settings
+ */
+router.post('/commands/:command', (req, res) => {
+    try {
+        const { command } = req.params;
+        const { message, accessLevel, enabled } = req.body;
+
+        const commandDb = require('../utils/commandDatabase');
+        const success = commandDb.updateCommand(command, {
+            message,
+            accessLevel,
+            enabled: enabled !== false
+        });
+
+        if (success) {
+            res.json({ success: true, message: 'Command updated successfully' });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to update command' });
+        }
+    } catch (error) {
+        console.error('Error updating command:', error);
+        res.status(500).json({ success: false, message: 'Failed to update command' });
+    }
+});
+
+/**
  * GET /api/groups
  * Get all WhatsApp groups
  */
