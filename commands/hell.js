@@ -36,8 +36,15 @@ module.exports = async (whatsappClient, message) => {
                 // Send a temporary response to indicate the command is being processed
                 await message.reply('Fetching the latest Hell Event information... Please wait.');
 
+                console.log('Attempting to fetch the latest message from Discord...');
                 // Fetch the latest message from Discord
                 const discordMessage = await fetchLatestDiscordMessage();
+
+                if (discordMessage) {
+                    console.log('Successfully fetched Discord message');
+                } else {
+                    console.log('Failed to fetch Discord message or no Hell Event message found');
+                }
 
                 if (discordMessage) {
                     // Process the Discord message
@@ -142,6 +149,8 @@ module.exports = async (whatsappClient, message) => {
                             );
                             return;
                         }
+
+                        console.log('Using saved event data as fallback...');
 
                         // Check if the event is still active
                         if (now.isBefore(eventEndTime)) {
@@ -350,9 +359,13 @@ async function fetchLatestDiscordMessage() {
     try {
         console.log('Initializing Discord client to fetch latest message...');
 
-        // Create a new Discord client with minimal intents
+        // Create a new Discord client with necessary intents
         const client = new Client({
-            intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
+            intents: [
+                GatewayIntentBits.Guilds,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.MessageContent  // Add MessageContent intent
+            ]
         });
 
         // Wait for the client to be ready
@@ -442,3 +455,6 @@ function calculateNextHellEventTime(currentTime) {
 
     return nextEventTime;
 }
+
+// Export the function to avoid unused function warning
+module.exports.calculateNextHellEventTime = calculateNextHellEventTime;
