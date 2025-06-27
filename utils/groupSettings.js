@@ -8,6 +8,7 @@ const settingsFile = path.join(__dirname, '..', 'data', 'groupSettings.json');
 // Default settings for new groups
 const defaultSettings = {
     hellNotifications: 'all', // 'all', 'watcherchaos', 'off'
+    monsterNotifications: 'on', // 'on', 'off'
     botEnabled: true, // true = bot aktif, false = bot nonaktif
     rentMode: false, // true = mode sewa, false = mode normal
     rentExpiry: null, // tanggal kadaluarsa sewa (ISO string)
@@ -92,8 +93,18 @@ function setHellNotifications(groupId, preference) {
     if (!validPreferences.includes(preference)) {
         return false;
     }
-    
+
     return updateGroupSettings(groupId, { hellNotifications: preference });
+}
+
+// Set monster notification preference for a group
+function setMonsterNotifications(groupId, preference) {
+    const validPreferences = ['on', 'off'];
+    if (!validPreferences.includes(preference)) {
+        return false;
+    }
+
+    return updateGroupSettings(groupId, { monsterNotifications: preference });
 }
 
 // Set command permission for a group
@@ -176,6 +187,14 @@ function shouldReceiveHellNotifications(groupId, eventType = 'all') {
 
     // preference === 'all'
     return true;
+}
+
+// Check if group should receive monster notifications
+function shouldReceiveMonsterNotifications(groupId) {
+    const settings = getGroupSettings(groupId);
+    const preference = settings.monsterNotifications;
+
+    return preference !== 'off'; // Default to 'on' if not set
 }
 
 // Set bot enabled/disabled status for a group
@@ -391,9 +410,11 @@ module.exports = {
     getGroupSettings,
     updateGroupSettings,
     setHellNotifications,
+    setMonsterNotifications,
     setCommandPermission,
     canExecuteCommand,
     shouldReceiveHellNotifications,
+    shouldReceiveMonsterNotifications,
     setBotEnabled,
     isBotEnabled,
     isBotOwner,
