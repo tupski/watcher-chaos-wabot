@@ -1,267 +1,398 @@
-# Lords Mobile Hell Event - WhatsApp Notification
-## `Chaos & Watcher` Notification
+# 🤖 WhatsApp Bot dengan Sistem Database
 
-## 🚀 Introduction
-Welcome to the **Chaos Watcher WhatsApp Bot**!
-This bot integrates WhatsApp messaging features with custom commands to make your WhatsApp experience more interactive. Built with **Node.js** and [**WhatsApp Web.js**](https://wwebjs.dev/), this bot serves as a versatile communication tool.
+Bot WhatsApp yang powerful dengan sistem database MySQL, dashboard web, dan fitur-fitur canggih untuk manajemen grup dan otomasi.
 
-Special thanks to [HephBot](https://hephbot.com) for providing inspiration and the Hell Event bot implementation on Discord. Their work has been pivotal for creating fun and interactive bots.
+## ✨ Fitur Utama
 
----
+### 🎯 Core Features
+- **WhatsApp Integration** - Terhubung langsung dengan WhatsApp Web
+- **MySQL Database** - Sistem database yang robust dan scalable
+- **Web Dashboard** - Interface web untuk manajemen bot
+- **Real-time Configuration** - Update pengaturan secara real-time
+- **Backup & Restore** - Sistem backup otomatis dan restore data
 
-## ✨ Features & Commands
+### 🎮 Game Features
+- **Hell Event Notifications** - Notifikasi event dari Discord
+- **Monster Rotation** - Jadwal rotasi monster dengan notifikasi otomatis
+- **AI Assistant** - Integrasi dengan Gemini AI untuk menjawab pertanyaan
 
-### ✅ Available Commands
-The bot supports the following commands:
+### 💰 Payment Features
+- **Bot Rental System** - Sistem sewa bot dengan Xendit payment gateway
+- **Trial Period** - Masa trial gratis untuk grup baru
+- **Auto Renewal** - Notifikasi dan perpanjangan otomatis
 
-| Command | Description | Example | Output Example|
-|-----------|-----------------------------------------------------------------------------|----------------------------------|----------------------------|
-| **`!yell`** | Allows users to send a custom fun message to groups or specific channels. | `!yell Hello World!` | Hello World!
-| **`!uptime`** | Displays how long the bot has been running. | `!uptime` | `Uptime: 0h 9m 58s` |
-| **`!ping`**   | A quick way to check if the bot is active and online. | `!ping` | N/A |
+### 👥 Group Management
+- **Multi-Group Support** - Mendukung multiple grup WhatsApp
+- **Permission System** - Sistem permission admin/member
+- **Auto Join** - Bot otomatis join ketika diundang ke grup
+- **Group Settings** - Pengaturan per grup yang fleksibel
 
----
+## 🚀 Quick Start
 
-### ❌ Commands & Features in Progress
-Currently, the following feature is still under development:
+### Instalasi Otomatis
 
-| Command   | Description                                    |
-|-----------|------------------------------------------------|
-| **`!tagall`** | Tags all group members with an optional message. Usage: `!tagall [message]` |
-| **`!hell`** | Displays the ongoing Hell Event data. If no events are currently active, it will show the last event time. |
-| **`!hell watcherchaos`** | Enable only Watcher/Chaos Dragon notifications (admin only) |
-| **`!hell all/on`** | Enable all Hell Event notifications (admin only) |
-| **`!hell off`** | Disable Hell Event notifications for this group (admin only) |
-| **`!hell status`** | Check current Hell Event notification settings |
-| **`!monster`** | Shows today and tomorrow monster rotation. Usage: `!monster` or `!monster [monster_name]` |
-| **`!ai`** | Ask AI assistant a question. Usage: `!ai <your question>` |
-| **`!cmd`** | Set command permissions (admin only). Usage: `!cmd <command> <admin/all>` |
-| **`!help`** | Show complete help and command reference |
+#### Windows
+```powershell
+# Download repository
+git clone https://github.com/your-username/whatsapp-bot.git
+cd whatsapp-bot
 
-### Anti Spam Link
-* This feature automatically blocks or prevents the spread of harmful, spammy, or unwanted links in WhatsApp groups.
-* Configure allowed links in the `ALLOWED_LINKS` environment variable (comma-separated).
+# Jalankan sebagai Administrator
+.\install-windows.ps1
+```
 
-### Monster Rotation
-* Displays daily monster rotation schedule for Lords Mobile
-* Automatic notifications at 11:55 AM (GMT+7) when monsters reset
-* Search specific monsters to see when they will spawn
-* 12-day rotation cycle with monsters like Gargantua, Hardrox, Jade Wyrm, etc.
-
-### AI Assistant
-* Powered by Google Gemini AI for intelligent responses
-* Ask questions using `!ai <your question>`
-* Quotes user questions and provides detailed answers
-* Safety filters enabled for appropriate responses
-
-### Permission Management
-* Per-group command permissions (admin/all members)
-* Hell Event notification preferences per group
-* Settings are isolated per group (won't affect other groups)
-* Admin-only commands: `!cmd` and Hell Event settings
-
-### Enhanced Hell Event System
-* Configurable notifications: all events, Watcher/Chaos only, or disabled
-* Per-group settings for notification preferences
-* Automatic filtering based on group preferences
-* Status checking with `!hell status`
----
-
-## 🛠️ Features & Output
-- **Command Responses**: The bot listens to specific commands sent to group chats and responds accordingly.
-- **Command Testing**: Commands such as `!hell`, `!ping`, `!uptime`, and `!yell` return interactive responses directly to the group.
-- **Bot Stability**: Ensures all commands work reliably under various network conditions.
-- **Web Interface**: A responsive web dashboard to view QR codes, message logs, and manage the bot.
-  - **QR Code Scanner**: Easily scan the WhatsApp QR code from the web interface.
-  - **Message Log**: View all sent and received messages in a paginated table.
-  - **Real-time Updates**: Messages appear in real-time as they are sent or received.
-  - **Message Management**: View message details and delete messages from the interface.
-
----
-
-## 🖥️ How to Set Up
-To set up and run this bot on your system:
-
-### 1. Clone the Repository:
-First, clone this repository to your local system:
+#### Ubuntu/Debian
 ```bash
-git clone https://github.com/tupski/watcher-chaos-wabot.git
-   ```
-### 2. Install Dependencies:
-Next, install all required dependencies by running:
-   ```bash
-   npm install
-   ```
-### 3. **Set Up Environment Variables**
+# Download repository
+git clone https://github.com/your-username/whatsapp-bot.git
+cd whatsapp-bot
 
-#### **Step 1: Get Your Discord API Token**
-- Visit [Discord Developer Portal](https://discord.com/developers/applications).
-- Log in to your Discord account.
-- Click on the **"New Application"** button to create a new application.
-- Name your application (e.g., "WatcherBot").
-- In the application settings, navigate to the **Bot** tab and click **"Add Bot"**.
-  - Under the **Bot** tab, locate the Token. Copy this token.
-    - This is your Discord API Key.
+# Jalankan script instalasi
+chmod +x install-ubuntu.sh
+./install-ubuntu.sh
+```
 
-> **Important**: For full functionality, you need to enable the **MESSAGE CONTENT** intent in the Discord Developer Portal. See [DISCORD_SETUP.md](DISCORD_SETUP.md) for detailed instructions.
->
-> If you want to enable Discord login for the web interface, you'll need to set up OAuth2. See [DISCORD_OAUTH_SETUP.md](DISCORD_OAUTH_SETUP.md) for instructions.
+### Menjalankan Bot
+```bash
+# Metode 1: Menggunakan npm
+npm start
+
+# Metode 2: Menggunakan Node.js langsung
+node index.js
+
+# Metode 3: Dengan konfigurasi database
+node index-database.js
+```
+
+### Akses Dashboard
+Buka browser dan kunjungi:
+- **Dashboard Utama**: http://localhost:3000
+- **Database Settings**: http://localhost:3000/database-settings.html
+- **Real-time Settings**: http://localhost:3000/realtime-settings.html
+- **Backup Manager**: http://localhost:3000/backup-manager.html
+
+## 📋 Persyaratan Sistem
+
+### Minimum Requirements
+- **OS**: Windows 10/11, Ubuntu 18.04+, atau Debian 10+
+- **RAM**: 2GB (4GB direkomendasikan)
+- **Storage**: 5GB ruang kosong
+- **Internet**: Koneksi stabil
+
+### Software Requirements
+- **Node.js**: v16.0.0+
+- **MySQL**: v8.0+
+- **Git**: Versi terbaru
+- **Browser**: Chrome/Firefox/Edge (untuk dashboard)
+
+## 🛠️ Instalasi Manual
+
+### 1. Install Dependencies
+
+#### Windows
+```powershell
+# Install Chocolatey
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Install dependencies
+choco install nodejs mysql git -y
+```
+
+#### Ubuntu/Debian
+```bash
+# Update sistem
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install MySQL dan dependencies lainnya
+sudo apt install -y mysql-server git build-essential
+```
+
+### 2. Setup Project
+```bash
+# Clone repository
+git clone https://github.com/your-username/whatsapp-bot.git
+cd whatsapp-bot
+
+# Install dependencies
+npm install
+
+# Setup database
+node scripts/setupDatabase.js
+
+# Migrasi konfigurasi
+node scripts/migrateEnvToDatabase.js
+```
+
+### 3. Konfigurasi
+```bash
+# Edit file .env
+cp .env.example .env
+nano .env
+```
+
+Atur konfigurasi minimal:
+```env
+BOT_OWNER_NUMBER=628123456789  # Nomor WhatsApp Anda
+DB_PASSWORD=your-mysql-password
+SESSION_SECRET=your-secret-key
+```
+
+## ⚙️ Konfigurasi
+
+### Environment Variables (.env)
+```env
+# Database
+DB_HOST=localhost
+DB_USER=wabot
+DB_PASSWORD=wabot123
+DB_NAME=wabot
+
+# Server
+PORT=3000
+BASE_URL=http://localhost:3000
+SESSION_SECRET=your-secret-key
+
+# WhatsApp
+WHATSAPP_CLIENT_ID=wabot-client
+BOT_OWNER_NUMBER=628123456789
+
+# Discord (Optional)
+DISCORD_TOKEN=your-discord-token
+DISCORD_CHANNEL_ID=your-channel-id
+
+# Payment (Optional)
+XENDIT_SECRET_KEY=your-xendit-key
+XENDIT_PUBLIC_KEY=your-xendit-public-key
+
+# AI (Optional)
+GEMINI_API_KEY=your-gemini-key
+```
+
+### Database Configuration
+Bot menggunakan MySQL dengan konfigurasi berikut:
+- **Database**: wabot
+- **Username**: wabot
+- **Password**: wabot123 (ubah untuk production)
+
+## 🎯 Cara Menggunakan
+
+### Menghubungkan WhatsApp
+1. Jalankan bot dengan `npm start`
+2. Scan QR Code yang muncul dengan WhatsApp di ponsel
+3. Tunggu pesan "WhatsApp client is ready!"
+
+### Perintah Bot
+
+#### Perintah Umum
+- `!help` - Daftar perintah
+- `!ping` - Cek status bot
+- `!ai <pertanyaan>` - Tanya AI assistant
+
+#### Perintah Admin
+- `!tagall <pesan>` - Tag semua member
+- `!enablebot` - Aktifkan bot
+- `!disablebot` - Nonaktifkan bot
+
+#### Perintah Game
+- `!hell` - Info Hell Event
+- `!monster` - Info Monster Rotation
+
+#### Perintah Payment
+- `!rent` - Sistem rental bot
+- `!rent pay 7d` - Bayar rental 7 hari
+
+### Web Dashboard
+
+#### Database Settings
+- Kelola pengaturan database
+- Monitor koneksi dan statistik
+- Backup dan restore data
+
+#### Real-time Settings
+- Edit konfigurasi secara live
+- Sinkronisasi multi-client
+- Activity logging
+
+#### Backup Manager
+- Buat backup otomatis
+- Restore dari backup
+- Export/import pengaturan
+
+## 🏗️ Arsitektur
+
+### Database Schema
+```
+wabot/
+├── bot_settings      # Pengaturan bot
+├── group_settings    # Pengaturan grup
+├── payment_logs      # Log pembayaran
+├── command_settings  # Konfigurasi perintah
+├── messages          # Log pesan
+└── system_logs       # Log sistem
+```
+
+### File Structure
+```
+whatsapp-bot/
+├── docs/             # Dokumentasi
+├── scripts/          # Script utilitas
+├── utils/            # Utility functions
+├── routes/           # API routes
+├── public/           # Web dashboard
+├── handlers/         # Event handlers
+├── commands/         # Bot commands
+└── models/           # Data models
+```
+
+## 🔧 Development
+
+### Setup Development Environment
+```bash
+# Clone repository
+git clone https://github.com/your-username/whatsapp-bot.git
+cd whatsapp-bot
+
+# Install dependencies
+npm install
+
+# Setup database
+node scripts/setupDatabase.js
+
+# Start development server
+npm run dev
+```
+
+### Available Scripts
+```bash
+npm start              # Start production server
+npm run dev            # Start development server
+npm test               # Run tests
+npm run backup         # Create database backup
+npm run restore        # Restore from backup
+```
+
+### API Endpoints
+- `GET /api/settings/all` - Get all settings
+- `POST /api/settings/update` - Update settings
+- `GET /api/settings/database/stats` - Database statistics
+- `POST /api/settings/database/backup` - Create backup
+
+## 📚 Dokumentasi
+
+### Dokumentasi Lengkap
+- [📦 Panduan Instalasi](docs/INSTALASI.md)
+- [🚀 Cara Menjalankan](docs/CARA_MENJALANKAN.md)
+- [🗄️ Sistem Database](docs/DATABASE_SYSTEM_GUIDE.md)
+
+### API Documentation
+- [API Reference](docs/API_DOCUMENTATION.md)
+- [WebSocket Events](docs/WEBSOCKET_EVENTS.md)
+
+## 🛡️ Keamanan
+
+### Best Practices
+- Ubah password default MySQL
+- Gunakan SESSION_SECRET yang kuat
+- Aktifkan firewall untuk port yang tidak diperlukan
+- Backup database secara rutin
+- Update dependencies secara berkala
+
+### Environment Security
+```env
+# Jangan commit file .env ke repository
+# Gunakan .env.example sebagai template
+# Simpan credentials di environment variables production
+```
+
+## 🔄 Backup & Restore
+
+### Backup Otomatis
+```bash
+# Buat backup manual
+node scripts/databaseBackup.js backup
+
+# Backup dengan nama custom
+node scripts/databaseBackup.js backup --name=pre-update
+
+# Lihat daftar backup
+node scripts/databaseBackup.js list
+```
+
+### Restore Data
+```bash
+# Restore dari backup
+node scripts/databaseBackup.js restore backups/backup-file.json --force
+
+# Export pengaturan saja
+node scripts/databaseBackup.js export-settings settings.json
+```
+
+## 🚀 Deployment
+
+### Production Deployment
+
+#### Menggunakan PM2
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start dengan PM2
+pm2 start index.js --name wabot
+
+# Setup auto-start
+pm2 startup
+pm2 save
+```
+
+#### Menggunakan Docker
+```bash
+# Build image
+docker build -t whatsapp-bot .
+
+# Run container
+docker run -d -p 3000:3000 --name wabot whatsapp-bot
+```
+
+#### Menggunakan Systemd (Ubuntu)
+```bash
+# Copy service file
+sudo cp wabot.service /etc/systemd/system/
+
+# Enable dan start service
+sudo systemctl enable wabot
+sudo systemctl start wabot
+```
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Buat feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push ke branch (`git push origin feature/amazing-feature`)
+5. Buat Pull Request
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## 📞 Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/your-username/whatsapp-bot/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-username/whatsapp-bot/discussions)
+
+## 🙏 Acknowledgments
+
+- [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) - WhatsApp Web API
+- [Discord.js](https://discord.js.org/) - Discord API wrapper
+- [MySQL2](https://github.com/sidorares/node-mysql2) - MySQL client
+- [Express.js](https://expressjs.com/) - Web framework
+- [Socket.IO](https://socket.io/) - Real-time communication
+
 ---
-#### **Step 2: Get Your WhatsApp Group IDs**
-- Open WhatsApp and set up groups for your bot's intended use.
-- Obtain the group IDs from the group info:
-  - Open the WhatsApp group you want to add to the bot.
-  - Look at the group info or settings to find the group ID.
-  - Alternatively, use the WhatsApp Web interface with your bot to inspect the group ID.
-- Copy these group IDs and add them to your `.env` file in the `WHATSAPP_GROUP_IDS`.
-> WhatsApp Group ID Example:
->
-> **`12036316XXX303832@g.us`**
 
-> **_you can also use multiple whatsapp group id separated by comma_**
->
-> **in .env**
-> `WHATSAPP_GROUP_IDS=12036316XXX303832@g.us,12036316XXX303832@g.us,12036316XXX303832@g.us`
-
----
-
-#### **Step 3: Set Up Your Environment Variables**
-- Create a `.env` file in the root of your repository with the following variables:
-  ```bash
-  DISCORD_TOKEN=your_discord_token
-  WHATSAPP_CLIENT_ID=your_whatsapp_client_id
-  WHATSAPP_GROUP_IDS=your_whatsapp_group_ids
-  ALLOWED_LINKS=https://example.com
-  TIMEZONE_OFFSET=7
-  ```
-- Replace the placeholders with your respective tokens and group IDs:
-    - `your_discord_token`: Your Discord bot token.
-    - `your_whatsapp_client_id`: Your unique WhatsApp client ID.
-    - `your_whatsapp_group_ids`: Multiple group IDs can be separated by commas _(e.g., id1,id2,id3)_.
-    - `https://example.com`: Allowed links that the bot will whitelist.
-    - `TIMEZONE_OFFSET=7`: Adjust this value based on your local timezone.
-
-### 4. Start the Bot:
-   ```bash
-   npm start
-   ```
-### 5. **Access the Web Interface:**
-After starting the bot, you can access the web interface by opening your browser and navigating to:
-
-   ```
-   http://localhost:3000
-   ```
-
-From the web interface, you can:
-- Scan the QR code to authenticate WhatsApp
-- View and manage messages
-- Monitor the bot's status in real-time
-
-### 6. **Monitor the Logs:**
-After successful startup, you should see:
-
-   ```bash
-   WhatsApp bot is ready!
-   Server running on port 3000
-   ```
-
----
-
-## � Troubleshooting
-
-### Common Issues and Solutions
-
-#### Commands Not Working (!tagall, !hell)
-1. **Check if the bot is properly authenticated with WhatsApp**
-   - Make sure you've scanned the QR code successfully
-   - Check the console for "WhatsApp client is ready!" message
-
-2. **Verify environment variables**
-   - Ensure `.env` file exists and contains all required variables
-   - Check that `DISCORD_TOKEN` is set correctly (see DISCORD_SETUP.md)
-
-3. **Discord Bot Issues**
-   - Enable MESSAGE CONTENT intent in Discord Developer Portal
-   - Verify the bot has proper permissions in your Discord server
-   - Check that `DISCORD_CHANNEL_ID` matches your target channel
-
-#### Tagall Command Issues
-1. **"This command can only be used in group chats" Error**
-   - Ensure you're using the command in a WhatsApp group, not private chat
-   - Check console logs for group detection details
-   - Bot will show group info in logs for debugging
-
-2. **No Mentions Working**
-   - Ensure bot has been added to the group properly
-   - Check if group participants are loaded correctly
-   - Bot needs to fetch participants which may take a moment
-
-#### Anti Spam Link Not Working
-1. **Check ALLOWED_LINKS configuration**
-   - Ensure `ALLOWED_LINKS` is set in your `.env` file
-   - Use comma-separated values for multiple allowed domains
-   - Example: `ALLOWED_LINKS=https://example.com,https://trusted-site.com`
-
-2. **Bot Permissions and Configuration**
-   - Bot must be admin in WhatsApp group to delete messages
-   - If bot can't delete messages, it will send warning instead
-   - Supported link formats: `https://`, `http://`, `www.`, and `domain.com`
-   - Configure `ALLOWED_LINKS` with domain names only (no http/https needed)
-   - Example: `ALLOWED_LINKS=example.com,google.com,github.com`
-
-#### Hell Event Filter Configuration
-1. **ONLY_WATCHER_CHAOS Setting**
-   - Set `ONLY_WATCHER_CHAOS=true` to only receive Watcher/Chaos Dragon notifications
-   - Set `ONLY_WATCHER_CHAOS=false` to receive all Hell Event notifications
-   - The `!hell` command always shows the latest event regardless of filter setting
-
-#### Hell Command Shows "Data tidak tersedia"
-1. **Discord Integration Issues**
-   - Verify Discord bot token is correct
-   - Check if the bot is in the correct Discord server
-   - Ensure MESSAGE CONTENT intent is enabled
-   - Verify `DISCORD_CHANNEL_ID` is correct
-
-2. **No Hell Event Data**
-   - The bot needs to receive at least one Hell Event message from Discord first
-   - Check Discord channel for Hell Event messages in the correct format
-
-#### Installation Issues
-1. **Node.js Not Found**
-   - Install Node.js from [nodejs.org](https://nodejs.org/)
-   - Verify installation with `node --version` and `npm --version`
-
-2. **Dependencies Issues**
-   - Run `npm install` to install all dependencies
-   - If issues persist, try `npm ci` for clean install
-
----
-
-## �🙏 Acknowledgements
-We would like to express our deepest gratitude to [HephBot](https://hephbot.com) for creating and sharing their amazing **Hell Event Bot**. Their contributions paved the way for this integration, and we are truly thankful for their work and dedication.
-
----
-
-## 📝 License
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT). You are free to use, modify, and distribute this bot under the conditions of the MIT License.
-
----
-
-## 📄 Contribution & Support
-We value your feedback! If you encounter any bugs, issues, or have suggestions to improve the bot, feel free to submit an issue via [GitHub Issues](https://github.com/tupski/watcher-chaos-wabot/issues). Contributions through pull requests are always welcome!
-
-- 🐞 **Found a bug?** Report it via GitHub Issues.
-- 💬 **Have a feature suggestion?** Share your thoughts!
-- 🛠️ **Want to contribute?** Fork the repository and submit a pull request.
-
-Your support helps make this project better for everyone. Thank you!
-
----
-
-## 📚 Additional Resources
-For more information about WhatsApp Web API integration, visit the [wwebjs.dev Documentation](https://wwebjs.dev/).
-It contains valuable information about WhatsApp's web client, its capabilities, and how you can extend the functionalities with **whatsapp-web.js**.
-
-We hope you enjoy using this bot! If you face any setup challenges or technical issues, consult the documentation or reach out for assistance. Your journey matters to us!
-
-Happy coding! 🚀
+**Made with ❤️ for the community**
