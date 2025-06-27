@@ -7,6 +7,10 @@ const { router: apiRoutes, setWhatsAppClient } = require('./routes/api');
 const authRoutes = require('./routes/auth');
 const { router: paymentRoutes, setWhatsAppClient: setPaymentWhatsAppClient } = require('./routes/payment');
 const dashboardRoutes = require('./routes/dashboard');
+const { router: adminlteRoutes, setWhatsAppClientRef: setAdminLTEWhatsAppClientRef } = require('./routes/adminlte-routes');
+const { router: apiGroupsRoutes, setWhatsAppClientRef: setApiGroupsWhatsAppClientRef } = require('./routes/api-groups');
+const apiSettingsRoutes = require('./routes/api-settings');
+const apiCommandsRoutes = require('./routes/api-commands');
 
 // Create Express app
 const app = express();
@@ -53,6 +57,10 @@ app.use(session({
 
 // API routes
 app.use('/api', apiRoutes);
+app.use('/api/groups', apiGroupsRoutes);
+app.use('/api/settings', apiSettingsRoutes);
+app.use('/api/system', apiSettingsRoutes);
+app.use('/api/commands', apiCommandsRoutes);
 
 // Auth routes
 app.use('/auth', authRoutes);
@@ -60,8 +68,21 @@ app.use('/auth', authRoutes);
 // Payment routes
 app.use('/payment', paymentRoutes);
 
-// Dashboard routes
-app.use('/dashboard', dashboardRoutes);
+// Dashboard routes (original)
+app.use('/dashboard-old', dashboardRoutes);
+
+// AdminLTE Dashboard routes (new)
+app.use('/dashboard', adminlteRoutes);
+
+// Logout route
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error destroying session:', err);
+        }
+        res.redirect('/');
+    });
+});
 
 // Socket.io connection
 io.on('connection', (socket) => {
@@ -72,7 +93,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Root route - redirect based on authentication
+// Root route - serve landing page
 app.get('/', (req, res) => {
     console.log('Root route accessed, session:', req.session ? 'exists' : 'none');
     console.log('Authenticated:', req.session ? req.session.authenticated : 'no session');
@@ -81,8 +102,8 @@ app.get('/', (req, res) => {
         console.log('Redirecting to /dashboard');
         res.redirect('/dashboard');
     } else {
-        console.log('Redirecting to /dashboard/login');
-        res.redirect('/dashboard/login');
+        console.log('Serving landing page');
+        res.sendFile(path.join(__dirname, 'public', 'landing.html'));
     }
 });
 
@@ -97,4 +118,4 @@ app.get('*', (req, res) => {
 });
 
 // Export the server, io, app, and setWhatsAppClient for use in index.js
-module.exports = { server, io, app, setWhatsAppClient, setPaymentWhatsAppClient };
+module.exports = { server, io, app, setWhatsAppClient, setPaymentWhatsAppClient, setAdminLTEWhatsAppClientRef, setApiGroupsWhatsAppClientRef };

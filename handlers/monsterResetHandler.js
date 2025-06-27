@@ -1,6 +1,6 @@
 const moment = require('moment');
 const cron = require('node-cron');
-const { isBotActiveInGroup } = require('../utils/groupSettings');
+const { isBotActiveInGroup, shouldReceiveMonsterNotifications } = require('../utils/groupSettings');
 
 // Monster rotation schedule (same as in monster.js)
 const monsterSchedule = [
@@ -61,18 +61,26 @@ function startMonsterResetScheduler(whatsappClient) {
                 const chats = await whatsappClient.getChats();
                 
                 for (const groupId of whatsappGroupIds) {
+                    const trimmedGroupId = groupId.trim();
+
                     // Check if bot is active in this group (considering both normal enable and rent)
-                    if (!isBotActiveInGroup(groupId.trim())) {
-                        console.log(`Skipping monster reset for group ${groupId} - bot is not active`);
+                    if (!isBotActiveInGroup(trimmedGroupId)) {
+                        console.log(`Skipping monster reset for group ${trimmedGroupId} - bot is not active`);
                         continue;
                     }
 
-                    const chat = chats.find(c => c.id._serialized === groupId.trim());
+                    // Check if group should receive monster notifications
+                    if (!shouldReceiveMonsterNotifications(trimmedGroupId)) {
+                        console.log(`Skipping monster reset for group ${trimmedGroupId} - monster notifications disabled`);
+                        continue;
+                    }
+
+                    const chat = chats.find(c => c.id._serialized === trimmedGroupId);
                     if (chat) {
                         await chat.sendMessage(resetMessage);
-                        console.log(`Monster reset notification sent to group: ${groupId}`);
+                        console.log(`Monster reset notification sent to group: ${trimmedGroupId}`);
                     } else {
-                        console.log(`Group not found: ${groupId}`);
+                        console.log(`Group not found: ${trimmedGroupId}`);
                     }
                 }
             } else {

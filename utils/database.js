@@ -24,20 +24,32 @@ if (!fs.existsSync(dbPath)) {
 function getMessages(page = 1, limit = 10) {
     try {
         const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+
+        // Sort messages by timestamp (newest first)
+        const sortedMessages = data.messages.sort((a, b) => {
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        });
+
         const startIndex = (page - 1) * limit;
         const endIndex = page * limit;
-        
+
         const results = {
-            messages: data.messages.slice(startIndex, endIndex),
-            totalMessages: data.messages.length,
-            totalPages: Math.ceil(data.messages.length / limit),
-            currentPage: page
+            messages: sortedMessages.slice(startIndex, endIndex),
+            totalMessages: sortedMessages.length,
+            totalPages: Math.ceil(sortedMessages.length / limit),
+            currentPage: page,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(sortedMessages.length / limit),
+                totalItems: sortedMessages.length,
+                itemsPerPage: limit
+            }
         };
-        
+
         return results;
     } catch (error) {
         console.error('Error reading messages from database:', error);
-        return { messages: [], totalMessages: 0, totalPages: 0, currentPage: 1 };
+        return { messages: [], totalMessages: 0, totalPages: 0, currentPage: 1, pagination: { currentPage: 1, totalPages: 0, totalItems: 0, itemsPerPage: limit } };
     }
 }
 

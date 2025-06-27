@@ -31,6 +31,14 @@ class Message {
     static delete(id) {
         return db.deleteMessage(id);
     }
+
+    /**
+     * Clear all messages
+     * @returns {boolean} - Whether the clearing was successful
+     */
+    static clearAll() {
+        return db.clearAllMessages();
+    }
 }
 
 module.exports = Message;

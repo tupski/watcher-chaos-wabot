@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Lords Mobile - WhatsApp Bot Dashboard</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .landing-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 3rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: white;
+            font-size: 2rem;
+        }
+        
+        .title {
+            color: #333;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+        
+        .feature-list {
+            text-align: left;
+            margin: 2rem 0;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: #555;
+        }
+        
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-right: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            padding: 12px 30px;
+            font-weight: 500;
+            color: white;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        .footer-text {
+            margin-top: 2rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #28a745;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        
+        @media (max-width: 576px) {
+            .landing-container {
+                padding: 2rem 1.5rem;
+                margin: 1rem;
+            }
+            
+            .stats-row {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <div class="logo">
+            <i class="fas fa-robot"></i>
+        </div>
+        
+        <h1 class="title">Bot Lords Mobile</h1>
+        <p class="subtitle">WhatsApp Bot Dashboard untuk Lords Mobile</p>
+        
+        <div class="stats-row">
+            <div class="stat-item">
+                <span class="stat-number" id="messageCount">0</span>
+                <div class="stat-label">Total Pesan</div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="groupCount">0</span>
+                <div class="stat-label">Grup Aktif</div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">24/7</span>
+                <div class="stat-label">Online</div>
+            </div>
+        </div>
+        
+        <div class="feature-list">
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div>
+                    <strong>Hell Event Notifications</strong><br>
+                    <small>Notifikasi otomatis untuk Hell Event dari Discord</small>
+                </div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <i class="fas fa-dragon"></i>
+                </div>
+                <div>
+                    <strong>Monster Rotation</strong><br>
+                    <small>Jadwal rotasi monster harian dengan notifikasi</small>
+                </div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <strong>Group Management</strong><br>
+                    <small>Kelola grup WhatsApp dengan mudah</small>
+                </div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div>
+                    <strong>Analytics Dashboard</strong><br>
+                    <small>Statistik dan monitoring real-time</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <span class="status-indicator"></span>
+            <small class="text-success">Bot Status: <strong>Online</strong></small>
+        </div>
+        
+        <a href="/dashboard/login" class="btn-login">
+            <i class="fas fa-sign-in-alt me-2"></i>
+            Login ke Dashboard
+        </a>
+        
+        <div class="footer-text">
+            <small>
+                <i class="fas fa-shield-alt me-1"></i>
+                Secure Dashboard • Real-time Updates • Mobile Friendly
+            </small>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Fetch basic statistics
+        async function loadStats() {
+            try {
+                // Try to fetch message count
+                const response = await fetch('/api/messages?limit=1');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.pagination && data.pagination.totalItems) {
+                        document.getElementById('messageCount').textContent = data.pagination.totalItems.toLocaleString();
+                    }
+                }
+            } catch (error) {
+                console.log('Could not load stats:', error);
+                // Set default values
+                document.getElementById('messageCount').textContent = '1,000+';
+                document.getElementById('groupCount').textContent = '10+';
+            }
+        }
+        
+        // Load stats when page loads
+        document.addEventListener('DOMContentLoaded', loadStats);
+        
+        // Add some animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.landing-container');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                container.style.transition = 'all 0.6s ease';
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 100);
+        });
+    </script>
+</body>
+</html>

@@ -3,7 +3,7 @@ const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const qrcode = require('qrcode-terminal');
 const qr = require('qrcode');
-const { server, io, setWhatsAppClient, setPaymentWhatsAppClient } = require('./server');
+const { server, io, setWhatsAppClient, setPaymentWhatsAppClient, setAdminLTEWhatsAppClientRef, setApiGroupsWhatsAppClientRef } = require('./server');
 const Message = require('./models/message');
 const path = require('path');
 const fs = require('fs');
@@ -75,6 +75,16 @@ whatsappClient.on('ready', () => {
     const dashboardRoutes = require('./routes/dashboard');
     if (dashboardRoutes.setWhatsAppClientRef) {
         dashboardRoutes.setWhatsAppClientRef(whatsappClient);
+    }
+
+    // Set client for AdminLTE dashboard routes
+    if (setAdminLTEWhatsAppClientRef) {
+        setAdminLTEWhatsAppClientRef(whatsappClient);
+    }
+
+    // Set client for API Groups routes
+    if (setApiGroupsWhatsAppClientRef) {
+        setApiGroupsWhatsAppClientRef(whatsappClient);
     }
     console.log('WhatsApp client set for API and payment routes');
 
