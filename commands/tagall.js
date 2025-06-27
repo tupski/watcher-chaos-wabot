@@ -59,7 +59,7 @@ module.exports = async (client, message) => {
 
                 // Add participant to mention
                 if (participant.id && participant.id.user) {
-                    mentionText += `@${participant.id.user} `;
+                    mentionText += `@${participant.id.user}\n`;
                     mentions.push(participant.id._serialized);
                 } else {
                     console.log('Skipping participant with invalid ID structure:', participant);
