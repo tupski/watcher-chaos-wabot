@@ -69,7 +69,7 @@ module.exports = async (client, message) => {
         'permission': 'permission.js',
         'enablebot': 'enablebot.js',
         'disablebot': 'disablebot.js',
-
+        'antispam': 'antispam.js',
         'botowner': 'botowner.js',
         'groups': 'groups.js',
         'restart': 'restart.js'

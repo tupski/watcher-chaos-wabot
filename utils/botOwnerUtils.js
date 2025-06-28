@@ -155,12 +155,13 @@ function isAdminCommand(command) {
         'permission',
         'enablebot',
         'disablebot',
+        'antispam',
         'hell all',
         'hell watcherchaos',
         'hell off'
     ];
-    
-    return adminCommands.some(adminCmd => 
+
+    return adminCommands.some(adminCmd =>
         command.toLowerCase().includes(adminCmd.toLowerCase())
     );
 }

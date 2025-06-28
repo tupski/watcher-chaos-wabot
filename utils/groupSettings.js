@@ -254,7 +254,132 @@ function getAllGroupsSettings() {
     return {};
 }
 
+// Set rent mode for a group
+function setRentMode(groupId, enabled, expiryDate = null, ownerInfo = null, duration = null, price = null, paymentId = null) {
+    try {
+        const settings = {
+            rentMode: enabled
+        };
 
+        if (enabled && expiryDate) {
+            // Validate expiry date
+            if (expiryDate && expiryDate instanceof Date && !isNaN(expiryDate.getTime())) {
+                settings.rentExpiry = expiryDate.toISOString();
+            } else {
+                console.error('Invalid expiry date provided to setRentMode');
+                return false;
+            }
+        }
+
+        if (ownerInfo) {
+            settings.rentOwner = ownerInfo;
+        }
+
+        if (duration) {
+            settings.rentDuration = duration;
+        }
+
+        if (price) {
+            settings.rentPrice = price;
+        }
+
+        if (paymentId) {
+            settings.rentPaymentId = paymentId;
+        }
+
+        // If disabling rent mode, clear rent-related fields
+        if (!enabled) {
+            settings.rentExpiry = null;
+            settings.rentOwner = null;
+            settings.rentDuration = null;
+            settings.rentPrice = null;
+            settings.rentPaymentId = null;
+        }
+
+        return updateGroupSettings(groupId, settings);
+    } catch (error) {
+        console.error('Error setting rent mode:', error);
+        return false;
+    }
+}
+
+// Get rent status for a group
+function getRentStatus(groupId) {
+    try {
+        const settings = getGroupSettings(groupId);
+
+        if (!settings.rentMode) {
+            return {
+                rentMode: false,
+                isActive: false,
+                rentExpiry: null
+            };
+        }
+
+        const now = new Date();
+        const expiryDate = settings.rentExpiry ? new Date(settings.rentExpiry) : null;
+        const isActive = expiryDate ? expiryDate > now : false;
+
+        return {
+            rentMode: true,
+            isActive: isActive,
+            rentExpiry: expiryDate,
+            rentOwner: settings.rentOwner || null,
+            rentDuration: settings.rentDuration || null,
+            rentPrice: settings.rentPrice || null,
+            rentPaymentId: settings.rentPaymentId || null
+        };
+    } catch (error) {
+        console.error('Error getting rent status:', error);
+        return {
+            rentMode: false,
+            isActive: false,
+            rentExpiry: null
+        };
+    }
+}
+
+// Check if rent is currently active
+function isRentActive(groupId) {
+    const rentStatus = getRentStatus(groupId);
+    return rentStatus.isActive;
+}
+
+// Extend rent mode duration
+function extendRentMode(groupId, additionalDays, ownerInfo = null, price = null, paymentId = null) {
+    try {
+        const settings = getGroupSettings(groupId);
+        const now = new Date();
+
+        let newExpiryDate;
+
+        if (settings.rentMode && settings.rentExpiry) {
+            // If already active, extend from current expiry date
+            const currentExpiry = new Date(settings.rentExpiry);
+            if (currentExpiry > now) {
+                // Still active, extend from current expiry
+                newExpiryDate = new Date(currentExpiry);
+            } else {
+                // Expired, start from now
+                newExpiryDate = new Date(now);
+            }
+        } else {
+            // Not in rent mode or no expiry set, start from now
+            newExpiryDate = new Date(now);
+        }
+
+        // Add additional days
+        newExpiryDate.setDate(newExpiryDate.getDate() + additionalDays);
+
+        // Set to end of day (23:59:59)
+        newExpiryDate.setHours(23, 59, 59, 999);
+
+        return setRentMode(groupId, true, newExpiryDate, ownerInfo, additionalDays, price, paymentId);
+    } catch (error) {
+        console.error('Error extending rent mode:', error);
+        return false;
+    }
+}
 
 module.exports = {
     getGroupSettings,
@@ -272,5 +397,9 @@ module.exports = {
     isBotOwner,
     isBotActiveInGroup,
     getAllGroupsSettings,
-    defaultSettings
+    defaultSettings,
+    setRentMode,
+    getRentStatus,
+    isRentActive,
+    extendRentMode
 };

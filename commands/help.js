@@ -33,11 +33,8 @@ module.exports = async (client, message) => {
 *🔧 Bot Owner Commands:*
 • \`!enablebot\` - Activate bot in this group (BOT_OWNER only)
 • \`!disablebot\` - Deactivate bot in this group (BOT_OWNER only)
-• \`!rent <option>\` - Manage bot rental (BOT_OWNER only)
-  - \`!rent DDMMYYYY\` - Set expiry date (e.g., !rent 08072025)
-  - \`!rent 30d\` - Set 30 days from now
-  - \`!rent disable\` - Disable rental mode
-  - \`!rent status\` - Check rental status (Admin can use)
+• \`!botowner list\` - List all groups (BOT_OWNER only)
+• \`!groups <number> <action>\` - Manage groups (BOT_OWNER only)
 
 *🔧 Permission System:*
 • Most commands can be used by all members by default
@@ -45,6 +42,7 @@ module.exports = async (client, message) => {
 • Hell notification settings are per-group
 • Only admins can change Hell notifications and command permissions
 • BOT_OWNER has full control over bot activation/deactivation
+• Bot is completely free to use - no rental system
 
 *📱 Features:*
 • Automatic Hell Event notifications from Discord
