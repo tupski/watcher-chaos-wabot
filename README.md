@@ -1,31 +1,33 @@
-# 🤖 WhatsApp Bot dengan Sistem Database
+# 🤖 Bot Lords Mobile WhatsApp
 
-Bot WhatsApp yang powerful dengan sistem database MySQL, dashboard web, dan fitur-fitur canggih untuk manajemen grup dan otomasi.
+Bot WhatsApp yang powerful dan gratis untuk komunitas Lords Mobile dengan banyak fitur, dashboard web AdminLTE, dan sistem anti-spam.
 
 ## ✨ Fitur Utama
 
 ### 🎯 Core Features
 - **WhatsApp Integration** - Terhubung langsung dengan WhatsApp Web
 - **MySQL Database** - Sistem database yang robust dan scalable
-- **Web Dashboard** - Interface web untuk manajemen bot
+- **AdminLTE Dashboard** - Interface web modern untuk manajemen bot
 - **Real-time Configuration** - Update pengaturan secara real-time
-- **Backup & Restore** - Sistem backup otomatis dan restore data
+- **Multi-Group Support** - Mendukung unlimited grup WhatsApp
 
-### 🎮 Game Features
-- **Hell Event Notifications** - Notifikasi event dari Discord
-- **Monster Rotation** - Jadwal rotasi monster dengan notifikasi otomatis
+### 🎮 Lords Mobile Features
+- **Hell Event Notifications** - Notifikasi event otomatis dari Discord
+- **Monster Rotation** - Jadwal rotasi monster 12 hari dengan notifikasi harian
 - **AI Assistant** - Integrasi dengan Gemini AI untuk menjawab pertanyaan
+- **Auto-Join Groups** - Bot otomatis join ketika diundang ke grup
 
-### 💰 Payment Features
-- **Bot Rental System** - Sistem sewa bot dengan Xendit payment gateway
-- **Trial Period** - Masa trial gratis untuk grup baru
-- **Auto Renewal** - Notifikasi dan perpanjangan otomatis
+### �️ Security & Anti-Spam
+- **Smart Anti-Spam Link** - Sistem anti-spam link per-grup dengan AI detection
+- **Auto-Block Porn** - Deteksi dan blokir link porno secara otomatis
+- **Domain Whitelist** - Manajemen domain yang diizinkan per grup
+- **Flexible Actions** - Delete message atau warning saja
 
 ### 👥 Group Management
-- **Multi-Group Support** - Mendukung multiple grup WhatsApp
-- **Permission System** - Sistem permission admin/member
-- **Auto Join** - Bot otomatis join ketika diundang ke grup
-- **Group Settings** - Pengaturan per grup yang fleksibel
+- **Per-Group Settings** - Pengaturan terpisah untuk setiap grup
+- **Permission System** - Sistem permission admin/member/all
+- **Bot Owner Override** - Bot owner bisa akses semua fitur tanpa admin
+- **Command Permissions** - Atur akses command per grup
 
 ## 🚀 Quick Start
 
@@ -34,8 +36,8 @@ Bot WhatsApp yang powerful dengan sistem database MySQL, dashboard web, dan fitu
 #### Windows
 ```powershell
 # Download repository
-git clone https://github.com/your-username/whatsapp-bot.git
-cd whatsapp-bot
+git clone https://github.com/tupski/watcher-chaos-wabot.git
+cd watcher-chaos-wabot
 
 # Jalankan sebagai Administrator
 .\install-windows.ps1
@@ -44,8 +46,8 @@ cd whatsapp-bot
 #### Ubuntu/Debian
 ```bash
 # Download repository
-git clone https://github.com/your-username/whatsapp-bot.git
-cd whatsapp-bot
+git clone https://github.com/tupski/watcher-chaos-wabot.git
+cd watcher-chaos-wabot
 
 # Jalankan script instalasi
 chmod +x install-ubuntu.sh
@@ -59,17 +61,14 @@ npm start
 
 # Metode 2: Menggunakan Node.js langsung
 node index.js
-
-# Metode 3: Dengan konfigurasi database
-node index-database.js
 ```
 
 ### Akses Dashboard
 Buka browser dan kunjungi:
-- **Dashboard Utama**: http://localhost:3000
-- **Database Settings**: http://localhost:3000/database-settings.html
-- **Real-time Settings**: http://localhost:3000/realtime-settings.html
-- **Backup Manager**: http://localhost:3000/backup-manager.html
+- **Dashboard AdminLTE**: http://localhost:3000
+- **Login Dashboard**: http://localhost:3000/dashboard/login
+- **Group Management**: http://localhost:3000/dashboard/groups
+- **Bot Settings**: http://localhost:3000/dashboard/settings
 
 ## 📋 Persyaratan Sistem
 
@@ -145,31 +144,32 @@ SESSION_SECRET=your-secret-key
 
 ### Environment Variables (.env)
 ```env
-# Database
+# Database Configuration
 DB_HOST=localhost
-DB_USER=wabot
-DB_PASSWORD=wabot123
+DB_USER=root
+DB_PASSWORD=mysql
 DB_NAME=wabot
 
-# Server
+# Web Server Configuration
 PORT=3000
-BASE_URL=http://localhost:3000
-SESSION_SECRET=your-secret-key
 
-# WhatsApp
-WHATSAPP_CLIENT_ID=wabot-client
+# Bot Configuration
 BOT_OWNER_NUMBER=628123456789
+TIMEZONE_OFFSET=7
 
-# Discord (Optional)
+# Discord Integration (Required for Hell Events)
 DISCORD_TOKEN=your-discord-token
 DISCORD_CHANNEL_ID=your-channel-id
 
-# Payment (Optional)
-XENDIT_SECRET_KEY=your-xendit-key
-XENDIT_PUBLIC_KEY=your-xendit-public-key
-
-# AI (Optional)
+# AI Assistant (Optional)
 GEMINI_API_KEY=your-gemini-key
+
+# Dashboard Authentication
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+
+# Anti-Spam Link Configuration (DEPRECATED - now per-group setting)
+ALLOWED_LINKS=fb.com,facebook.com,google.com,docs.google.com,wa.me,whatsapp.com,youtube.com,tiktok.com,vt.tiktok.com,youtu.be
 ```
 
 ### Database Configuration
@@ -185,67 +185,151 @@ Bot menggunakan MySQL dengan konfigurasi berikut:
 2. Scan QR Code yang muncul dengan WhatsApp di ponsel
 3. Tunggu pesan "WhatsApp client is ready!"
 
-### Perintah Bot
+### 📋 Daftar Command Lengkap
 
-#### Perintah Umum
-- `!help` - Daftar perintah
-- `!ping` - Cek status bot
-- `!ai <pertanyaan>` - Tanya AI assistant
+#### 🔧 Command Umum
+| Command | Contoh | Output |
+|---------|--------|--------|
+| `!help` | `!help` | Menampilkan daftar semua command yang tersedia |
+| `!ping` | `!ping` | Menampilkan status bot dan waktu response |
+| `!ai <pertanyaan>` | `!ai Apa itu Lords Mobile?` | AI menjawab pertanyaan menggunakan Gemini |
 
-#### Perintah Admin
-- `!tagall <pesan>` - Tag semua member
-- `!enablebot` - Aktifkan bot
-- `!disablebot` - Nonaktifkan bot
+#### 🎮 Command Lords Mobile
+| Command | Contoh | Output |
+|---------|--------|--------|
+| `!hell` | `!hell` | Info Hell Event saat ini (Watcher/Chaos Dragon) |
+| `!hell all` | `!hell all` | Info semua Hell Event yang aktif |
+| `!hell watcherchaos` | `!hell watcherchaos` | Info khusus Watcher dan Chaos Dragon |
+| `!monster` | `!monster` | Jadwal monster hari ini dan besok |
+| `!monster <nama>` | `!monster gargantua` | Cari kapan monster tertentu spawn |
+| `!monster status` | `!monster status` | Status notifikasi monster untuk grup |
+| `!monster on` | `!monster on` | Aktifkan notifikasi monster harian (admin) |
+| `!monster off` | `!monster off` | Nonaktifkan notifikasi monster harian (admin) |
 
-#### Perintah Game
-- `!hell` - Info Hell Event
-- `!monster` - Info Monster Rotation
+#### 👥 Command Group Management
+| Command | Contoh | Output |
+|---------|--------|--------|
+| `!tagall <pesan>` | `!tagall Meeting sekarang!` | Tag semua member grup dengan pesan |
+| `!enablebot` | `!enablebot` | Aktifkan bot di grup (admin) |
+| `!disablebot` | `!disablebot` | Nonaktifkan bot di grup (admin) |
+| `!permission` | `!permission` | Lihat pengaturan permission grup |
 
-#### Perintah Payment
-- `!rent` - Sistem rental bot
-- `!rent pay 7d` - Bayar rental 7 hari
+#### 🛡️ Command Anti-Spam
+| Command | Contoh | Output |
+|---------|--------|--------|
+| `!antispam` | `!antispam` | Lihat pengaturan anti-spam link grup |
+| `!antispam on` | `!antispam on` | Aktifkan anti-spam link (admin) |
+| `!antispam off` | `!antispam off` | Nonaktifkan anti-spam link (admin) |
+| `!antispam porn on` | `!antispam porn on` | Aktifkan auto-block link porno (admin) |
+| `!antispam porn off` | `!antispam porn off` | Nonaktifkan auto-block link porno (admin) |
+| `!antispam action delete` | `!antispam action delete` | Set aksi hapus pesan otomatis (admin) |
+| `!antispam action warn` | `!antispam action warn` | Set aksi warning saja (admin) |
+| `!antispam add <domain>` | `!antispam add example.com` | Tambah domain ke whitelist (admin) |
+| `!antispam remove <domain>` | `!antispam remove example.com` | Hapus domain dari whitelist (admin) |
+| `!antispam reset` | `!antispam reset` | Reset pengaturan ke default (admin) |
 
-### Web Dashboard
+#### ⚙️ Command Admin/Owner
+| Command | Contoh | Output |
+|---------|--------|--------|
+| `!cmd <command> <level>` | `!cmd hell admin` | Ubah permission command (admin) |
+| `!debug` | `!debug` | Info debug dan diagnostik bot (admin) |
+| `!restart` | `!restart` | Restart bot dengan delay (owner) |
+| `!restart 60` | `!restart 60` | Restart bot dengan delay 60 detik (owner) |
 
-#### Database Settings
-- Kelola pengaturan database
-- Monitor koneksi dan statistik
-- Backup dan restore data
+### 🎯 Fitur Otomatis
 
-#### Real-time Settings
-- Edit konfigurasi secara live
-- Sinkronisasi multi-client
-- Activity logging
+#### Hell Event Notifications
+- Bot otomatis mengirim notifikasi Hell Event dari Discord
+- Pengaturan per grup: semua event, hanya Watcher/Chaos Dragon, atau off
+- Update real-time ketika ada event baru
 
-#### Backup Manager
-- Buat backup otomatis
-- Restore dari backup
-- Export/import pengaturan
+#### Monster Rotation
+- Notifikasi harian jam 11:55 WIB untuk monster hari ini
+- Jadwal 12 hari rotasi dimulai dari Gargantua & Hardrox (8 Juni 2025)
+- Bisa dinonaktifkan per grup dengan `!monster off`
+
+#### Anti-Spam Link
+- Deteksi otomatis link yang tidak diizinkan
+- Auto-block link porno dengan AI detection
+- Pengaturan per grup: whitelist domain, aksi (delete/warn)
+- Whitelist 30+ domain aman (Google, Facebook, YouTube, dll)
+
+### 🌐 Web Dashboard (AdminLTE)
+
+#### 🏠 Dashboard Utama
+- Overview statistik bot dan grup
+- Grafik aktivitas real-time
+- Status koneksi WhatsApp dan database
+- Quick actions untuk manajemen
+
+#### 👥 Group Management
+- Daftar semua grup yang diikuti bot
+- Filter dan search grup
+- Pengaturan per grup (enable/disable, notifications)
+- Statistik member dan aktivitas grup
+
+#### ⚙️ Bot Settings
+- Konfigurasi Hell Event notifications
+- Pengaturan Monster Rotation
+- Command permissions global
+- Bot profile dan informasi
+
+#### 📊 Message Logs
+- Log semua pesan yang diproses bot
+- Filter berdasarkan grup, tanggal, command
+- Export log untuk analisis
+- Pagination dan search
+
+#### 🔐 Authentication
+- Login dengan username/password
+- Session management
+- Secure dashboard access
+- Auto-logout untuk keamanan
 
 ## 🏗️ Arsitektur
 
 ### Database Schema
 ```
 wabot/
-├── bot_settings      # Pengaturan bot
-├── group_settings    # Pengaturan grup
-├── payment_logs      # Log pembayaran
-├── command_settings  # Konfigurasi perintah
-├── messages          # Log pesan
-└── system_logs       # Log sistem
+├── bot_settings      # Pengaturan global bot
+├── group_settings    # Pengaturan per grup (antiSpamLink, notifications, dll)
+├── command_settings  # Konfigurasi command dan permissions
+├── message_logs      # Log semua pesan yang diproses
+└── system_logs       # Log sistem dan error
 ```
 
 ### File Structure
 ```
-whatsapp-bot/
-├── docs/             # Dokumentasi
-├── scripts/          # Script utilitas
-├── utils/            # Utility functions
-├── routes/           # API routes
-├── public/           # Web dashboard
-├── handlers/         # Event handlers
-├── commands/         # Bot commands
-└── models/           # Data models
+watcher-chaos-wabot/
+├── docs/                    # Dokumentasi lengkap
+├── commands/                # Bot commands
+│   ├── hell.js             # Hell Event command
+│   ├── monster.js          # Monster Rotation command
+│   ├── antispam.js         # Anti-spam link management
+│   ├── tagall.js           # Tag all members
+│   └── ...
+├── handlers/                # Event handlers
+│   ├── messageHandler.js   # Message processing
+│   ├── hellEventHandler.js # Hell Event notifications
+│   ├── monsterResetHandler.js # Monster rotation
+│   └── groupJoinHandler.js # Auto-join groups
+├── middleware/              # Middleware functions
+│   └── antiSpamLink.js     # Anti-spam link filter
+├── utils/                   # Utility functions
+│   ├── groupSettings.js    # Group settings management
+│   ├── pornBlockList.js    # Porn detection engine
+│   └── whatsappUtils.js    # WhatsApp utilities
+├── routes/                  # Web dashboard routes
+│   ├── dashboard.js        # AdminLTE dashboard
+│   ├── api-groups.js       # Group management API
+│   └── ...
+├── public/                  # Web dashboard assets
+│   ├── adminlte/           # AdminLTE theme
+│   └── dashboard/          # Dashboard pages
+└── test/                    # Test files
+    ├── test-all-fixes.js   # Comprehensive tests
+    ├── test-antispam-link.js # Anti-spam tests
+    └── ...
 ```
 
 ## 🔧 Development
@@ -283,14 +367,20 @@ npm run restore        # Restore from backup
 
 ## 📚 Dokumentasi
 
-### Dokumentasi Lengkap
-- [📦 Panduan Instalasi](docs/INSTALASI.md)
-- [🚀 Cara Menjalankan](docs/CARA_MENJALANKAN.md)
-- [🗄️ Sistem Database](docs/DATABASE_SYSTEM_GUIDE.md)
+### 📖 Dokumentasi Lengkap
+- [📦 Panduan Instalasi](docs/INSTALASI.md) - Setup lengkap Windows & Ubuntu
+- [🚀 Cara Menjalankan](docs/CARA_MENJALANKAN.md) - Panduan menjalankan bot
+- [🗄️ Sistem Database](docs/DATABASE_SYSTEM_GUIDE.md) - Konfigurasi MySQL
+- [🎮 Lords Mobile Features](docs/LORDS_MOBILE_FEATURES.md) - Hell Event & Monster Rotation
+- [🛡️ Anti-Spam System](docs/ANTI_SPAM_GUIDE.md) - Konfigurasi anti-spam link
+- [🌐 Dashboard Guide](docs/DASHBOARD_GUIDE.md) - Panduan AdminLTE dashboard
+- [⚙️ Command Reference](docs/COMMAND_REFERENCE.md) - Daftar lengkap semua command
 
-### API Documentation
-- [API Reference](docs/API_DOCUMENTATION.md)
-- [WebSocket Events](docs/WEBSOCKET_EVENTS.md)
+### 🔧 Technical Documentation
+- [API Reference](docs/API_DOCUMENTATION.md) - REST API endpoints
+- [Database Schema](docs/DATABASE_SCHEMA.md) - Struktur database
+- [Development Guide](docs/DEVELOPMENT_GUIDE.md) - Panduan development
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) - Panduan deployment production
 
 ## 🛡️ Keamanan
 
@@ -379,11 +469,31 @@ sudo systemctl start wabot
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-## 📞 Support
+## 🎯 Fitur Unggulan
 
-- **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/your-username/whatsapp-bot/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/whatsapp-bot/discussions)
+### 🤖 Gratis & Open Source
+- **100% Gratis** - Tidak ada biaya berlangganan atau rental
+- **Open Source** - Kode terbuka untuk komunitas
+- **Self-Hosted** - Kontrol penuh atas data dan bot
+- **No Limits** - Unlimited grup dan pengguna
+
+### 🚀 Performance & Reliability
+- **High Performance** - Optimized untuk handling multiple groups
+- **Auto-Restart** - Sistem restart otomatis jika terjadi error
+- **Database Backup** - Backup otomatis pengaturan dan data
+- **Error Handling** - Robust error handling dan logging
+
+### 🔒 Security & Privacy
+- **Data Privacy** - Semua data tersimpan di server Anda sendiri
+- **Secure Dashboard** - Authentication untuk akses dashboard
+- **Bot Owner Control** - Kontrol penuh untuk bot owner
+- **Group Isolation** - Pengaturan terpisah per grup
+
+## 📞 Support & Community
+
+- **Documentation**: [docs/](docs/) - Dokumentasi lengkap
+- **Issues**: [GitHub Issues](https://github.com/tupski/watcher-chaos-wabot/issues) - Laporkan bug
+- **Discussions**: [GitHub Discussions](https://github.com/tupski/watcher-chaos-wabot/discussions) - Diskusi
 
 ## 🙏 Acknowledgments
 
@@ -391,8 +501,15 @@ Distributed under the MIT License. See `LICENSE` for more information.
 - [Discord.js](https://discord.js.org/) - Discord API wrapper
 - [MySQL2](https://github.com/sidorares/node-mysql2) - MySQL client
 - [Express.js](https://expressjs.com/) - Web framework
-- [Socket.IO](https://socket.io/) - Real-time communication
+- [AdminLTE](https://adminlte.io/) - Dashboard theme
+- [Google Gemini](https://ai.google.dev/) - AI Assistant
+
+## 🌟 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=tupski/watcher-chaos-wabot&type=Date)](https://star-history.com/#tupski/watcher-chaos-wabot&Date)
 
 ---
 
-**Made with ❤️ for the community**
+**Made with ❤️ for Lords Mobile Community**
+
+*Bot ini dibuat khusus untuk komunitas Lords Mobile Indonesia. Gratis, open source, dan selalu gratis!*
