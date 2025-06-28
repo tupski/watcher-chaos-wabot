@@ -1,13 +1,32 @@
 /**
  * Deletes unauthorized link messages from a given message object.
+ * Now uses per-group settings instead of global allowed links.
  *
  * @param {import('whatsapp-web.js').Message} message - The message object to check.
- * @param {string[]} allowedLinks - An array of strings representing the allowed links.
+ * @param {import('whatsapp-web.js').Client} client - The WhatsApp client instance.
  * @return {Promise<boolean>} A promise that resolves to true if the message was deleted, false if not.
  */
-module.exports = async (message, allowedLinks) => {
+module.exports = async (message, client) => {
     if (!message || !message.body) {
         console.log('Message or message body is null, skipping link check');
+        return false;
+    }
+
+    // Get chat info to determine if this is a group and get group settings
+    const chat = await message.getChat();
+    if (!chat.isGroup) {
+        console.log('Message is not from a group, skipping link check');
+        return false;
+    }
+
+    // Get anti-spam link settings for this group
+    const { getAntiSpamLinkSettings } = require('../utils/groupSettings');
+    const { isPornContent } = require('../utils/pornBlockList');
+    const antiSpamSettings = getAntiSpamLinkSettings(chat.id._serialized);
+
+    // Check if anti-spam link is enabled for this group
+    if (!antiSpamSettings.enabled) {
+        console.log('Anti-spam link is disabled for this group, skipping link check');
         return false;
     }
 
@@ -22,7 +41,7 @@ module.exports = async (message, allowedLinks) => {
 
     try {
         // Normalize allowed links to just domain names (remove protocols)
-        const normalizedAllowedDomains = allowedLinks.map(allowed => {
+        const normalizedAllowedDomains = antiSpamSettings.allowedDomains.map(allowed => {
             return allowed.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
         });
 
@@ -36,6 +55,12 @@ module.exports = async (message, allowedLinks) => {
 
             console.log(`Checking link: "${link}" -> domain: "${domain}"`);
 
+            // First check if it's porn content (auto-block if enabled)
+            if (antiSpamSettings.blockPorn && isPornContent(link)) {
+                console.log(`PORN CONTENT DETECTED: "${link}" - AUTO BLOCKED`);
+                return true; // Block this link
+            }
+
             // Check if this domain is in the allowed list
             const isAllowed = normalizedAllowedDomains.some(allowed =>
                 domain === allowed || domain.includes(allowed) || allowed.includes(domain)
@@ -48,31 +73,48 @@ module.exports = async (message, allowedLinks) => {
         if (unauthorizedLinks.length > 0) {
             console.log(`Found unauthorized link message from ${message.author || message.from}: "${message.body}"`);
 
-            // Try to delete the message
-            try {
-                await message.delete(true); // true = delete for everyone
-                console.log('Successfully deleted unauthorized link message');
-                return true;
-            } catch (deleteError) {
-                console.log('Could not delete message (may not have permission), sending warning instead');
-
-                // If we can't delete, send a warning message
+            // Check if action is delete or warn
+            if (antiSpamSettings.action === 'delete') {
+                // Try to delete the message
                 try {
-                    const chat = await message.getChat();
-                    const contact = await message.getContact();
-                    const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${contact.number} link yang Anda kirim tidak diizinkan di grup ini.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}`;
+                    await message.delete(true); // true = delete for everyone
+                    console.log('Successfully deleted unauthorized link message');
 
-                    await chat.sendMessage(warningMsg, {
-                        mentions: [message.from]
-                    });
+                    // Send notification about deleted message
+                    try {
+                        const contact = await message.getContact();
+                        const notificationMsg = `🚫 *Link Dihapus Otomatis* 🚫\n\n@${contact.number || contact.pushname || 'Unknown'} pesan Anda dihapus karena mengandung link yang tidak diizinkan.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}`;
 
-                    console.log('Warning message sent for unauthorized link');
-                } catch (warningError) {
-                    console.error('Error sending warning message:', warningError);
+                        await chat.sendMessage(notificationMsg, {
+                            mentions: [message.from]
+                        });
+
+                        console.log('Deletion notification sent');
+                    } catch (notificationError) {
+                        console.error('Error sending deletion notification:', notificationError);
+                    }
+
+                    return true;
+                } catch (deleteError) {
+                    console.log('Could not delete message (may not have permission), sending warning instead');
                 }
-
-                return false; // Message wasn't deleted but was processed
             }
+
+            // If action is 'warn' or delete failed, send warning message
+            try {
+                const contact = await message.getContact();
+                const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${contact.number || contact.pushname || 'Unknown'} link yang Anda kirim tidak diizinkan di grup ini.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}\n\n${antiSpamSettings.action === 'delete' ? '⚠️ Pesan akan dihapus jika bot memiliki izin admin.' : '⚠️ Mohon hapus pesan ini secara manual.'}`;
+
+                await chat.sendMessage(warningMsg, {
+                    mentions: [message.from]
+                });
+
+                console.log('Warning message sent for unauthorized link');
+            } catch (warningError) {
+                console.error('Error sending warning message:', warningError);
+            }
+
+            return antiSpamSettings.action === 'delete' ? false : true; // Return based on action type
         }
     } catch (error) {
         console.error(`Error while checking for unauthorized links in message: ${error}`);

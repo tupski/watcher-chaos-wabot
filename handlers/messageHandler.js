@@ -22,11 +22,10 @@ module.exports = async (client, message) => {
     console.log('Received message:', message.body);
 
     // Check for spam links first (before processing commands)
-    const allowedLinks = process.env.ALLOWED_LINKS ? process.env.ALLOWED_LINKS.split(',') : [];
-    const wasDeleted = await antiSpamLink(message, allowedLinks);
+    const wasDeleted = await antiSpamLink(message, client);
 
     if (wasDeleted) {
-        console.log('Message was deleted due to unauthorized links');
+        console.log('Message was processed by anti-spam link filter');
         return;
     }
 

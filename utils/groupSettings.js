@@ -10,16 +10,23 @@ const defaultSettings = {
     hellNotifications: 'all', // 'all', 'watcherchaos', 'off'
     monsterNotifications: 'on', // 'on', 'off'
     botEnabled: true, // true = bot aktif, false = bot nonaktif
+    antiSpamLink: {
+        enabled: true, // true = aktif, false = nonaktif
+        allowedDomains: ['fb.com', 'facebook.com', 'google.com', 'docs.google.com', 'wa.me', 'whatsapp.com', 'youtube.com', 'tiktok.com', 'vt.tiktok.com', 'youtu.be'],
+        blockPorn: true, // true = auto block link porno, false = tidak
+        action: 'delete' // 'delete' = hapus pesan, 'warn' = beri peringatan saja
+    },
     commandPermissions: {
         hell: 'all',     // 'all', 'admin'
-        monster: 'all',
+        monster: 'al l',
         tagall: 'all',
         ping: 'all',
         ai: 'all',
         help: 'all',
         cmd: 'admin',
         debug: 'admin',
-        permission: 'admin'
+        permission: 'admin',
+        antispam: 'admin'
     }
 };
 
@@ -95,6 +102,23 @@ function setMonsterNotifications(groupId, preference) {
     }
 
     return updateGroupSettings(groupId, { monsterNotifications: preference });
+}
+
+// Set anti spam link settings for a group
+function setAntiSpamLink(groupId, settings) {
+    const currentSettings = getGroupSettings(groupId);
+    const newAntiSpamSettings = {
+        ...currentSettings.antiSpamLink,
+        ...settings
+    };
+
+    return updateGroupSettings(groupId, { antiSpamLink: newAntiSpamSettings });
+}
+
+// Get anti spam link settings for a group
+function getAntiSpamLinkSettings(groupId) {
+    const settings = getGroupSettings(groupId);
+    return settings.antiSpamLink || defaultSettings.antiSpamLink;
 }
 
 // Set command permission for a group
@@ -237,6 +261,8 @@ module.exports = {
     updateGroupSettings,
     setHellNotifications,
     setMonsterNotifications,
+    setAntiSpamLink,
+    getAntiSpamLinkSettings,
     setCommandPermission,
     canExecuteCommand,
     shouldReceiveHellNotifications,
