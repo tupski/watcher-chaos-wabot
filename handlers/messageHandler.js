@@ -40,50 +40,12 @@ module.exports = async (client, message) => {
     const commandName = message.body.split(' ')[0].substring(1).toLowerCase();
     console.log('Command name extracted:', commandName);
 
-    // Check if bot is active in this group (considering both normal enable and rent)
+    // Check if bot is active in this group
     const chat = await message.getChat();
-    if (isGroupChat(chat) && !['enablebot', 'rent', 'botowner', 'groups', 'restart'].includes(commandName)) {
+    if (isGroupChat(chat) && !['enablebot', 'botowner', 'groups', 'restart'].includes(commandName)) {
         const groupId = chat.id._serialized;
         if (!isBotActiveInGroup(groupId)) {
-            console.log(`Bot is not active in group ${groupId}, showing promo message for command: ${commandName}`);
-
-            // Send promo message when bot is inactive
-            const { generatePromoMessage } = require('../utils/promoSettings');
-            const activePromo = generatePromoMessage();
-
-            let promoMessage = '🔒 *Bot Tidak Aktif*\n\n';
-            promoMessage += 'Bot saat ini dalam status NONAKTIF.\n\n';
-
-            // Add active promo if available
-            if (activePromo) {
-                promoMessage += activePromo;
-            }
-
-            promoMessage += '💰 *Paket Sewa Bot Lords Mobile:*\n';
-            promoMessage += '• 1 hari: Rp 2,000\n';
-            promoMessage += '• 1 minggu: Rp 12,000\n';
-            promoMessage += '• 1 bulan: Rp 50,000\n';
-            promoMessage += '• 6 bulan: Rp 500,000\n';
-            promoMessage += '• 1 tahun: Rp 950,000\n\n';
-
-            promoMessage += '📱 *Cara Aktivasi:*\n';
-            promoMessage += '• `!rent pay <durasi>` - Pembayaran otomatis\n';
-            if (activePromo) {
-                promoMessage += '• `!rent pay promo` - Gunakan promo spesial\n';
-            }
-            promoMessage += '• `!rent manual` - Info pembayaran manual\n';
-            promoMessage += '• Hubungi: 0822-1121-9993 (Angga)\n\n';
-
-            promoMessage += '✨ *Fitur Bot:*\n';
-            promoMessage += '• Notifikasi Hell Event otomatis\n';
-            promoMessage += '• Info Monster Rotation harian\n';
-            promoMessage += '• AI Assistant\n';
-            promoMessage += '• Tag All Members\n';
-            promoMessage += '• Anti-spam Protection\n\n';
-
-            promoMessage += '⚡ *Aktivasi instan dengan pembayaran otomatis via Xendit!*';
-
-            await message.reply(promoMessage);
+            console.log(`Bot is not active in group ${groupId}, ignoring command: ${commandName}`);
             return;
         }
     }
@@ -108,13 +70,7 @@ module.exports = async (client, message) => {
         'permission': 'permission.js',
         'enablebot': 'enablebot.js',
         'disablebot': 'disablebot.js',
-        'rent': 'rent.js',
-        'grouprent': 'grouprent.js',
-        'promo': 'promo.js',
-        'sendpayment': 'sendpayment.js',
-        'activate': 'activate.js',
-        'revenue': 'revenue.js',
-        'paymentlog': 'paymentlog.js',
+
         'botowner': 'botowner.js',
         'groups': 'groups.js',
         'restart': 'restart.js'

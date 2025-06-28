@@ -16,7 +16,7 @@ function setWhatsAppClientRef(client) {
 // Update group settings
 router.post('/settings', checkSession, async (req, res) => {
     try {
-        const { groupId, hellNotifications, botEnabled, rentExpiry, autoMessages } = req.body;
+        const { groupId, hellNotifications, botEnabled, autoMessages } = req.body;
         
         if (!groupId) {
             return res.status(400).json({
@@ -29,7 +29,6 @@ router.post('/settings', checkSession, async (req, res) => {
         const settings = {
             hellNotifications: hellNotifications || 'all',
             botEnabled: botEnabled !== false, // Default to true
-            rentExpiry: rentExpiry || null,
             autoMessages: autoMessages !== false // Default to true
         };
 

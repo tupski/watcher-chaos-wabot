@@ -5,7 +5,7 @@ const socketIo = require('socket.io');
 const session = require('express-session');
 const { router: apiRoutes, setWhatsAppClient } = require('./routes/api');
 const authRoutes = require('./routes/auth');
-const { router: paymentRoutes, setWhatsAppClient: setPaymentWhatsAppClient } = require('./routes/payment');
+
 const dashboardRoutes = require('./routes/dashboard');
 const { router: adminlteRoutes, setWhatsAppClientRef: setAdminLTEWhatsAppClientRef } = require('./routes/adminlte-routes');
 const { router: apiGroupsRoutes, setWhatsAppClientRef: setApiGroupsWhatsAppClientRef } = require('./routes/api-groups');
@@ -17,27 +17,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Middleware for webhook raw body capture
-app.use('/payment/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
-    // Store raw body for signature verification
-    req.rawBody = req.body;
-    // Parse JSON for processing
-    try {
-        if (Buffer.isBuffer(req.body)) {
-            req.body = JSON.parse(req.body.toString());
-        } else if (typeof req.body === 'string') {
-            req.body = JSON.parse(req.body);
-        } else if (typeof req.body === 'object' && req.body !== null) {
-            // Already parsed, keep as is
-        } else {
-            throw new Error('Invalid body type');
-        }
-    } catch (error) {
-        console.error('Error parsing webhook JSON:', error);
-        return res.status(400).json({ error: 'Invalid JSON' });
-    }
-    next();
-});
+
 
 // Regular middleware
 app.use(express.json());
@@ -65,8 +45,7 @@ app.use('/api/commands', apiCommandsRoutes);
 // Auth routes
 app.use('/auth', authRoutes);
 
-// Payment routes
-app.use('/payment', paymentRoutes);
+
 
 // Dashboard routes (original)
 app.use('/dashboard-old', dashboardRoutes);
@@ -118,4 +97,4 @@ app.get('*', (req, res) => {
 });
 
 // Export the server, io, app, and setWhatsAppClient for use in index.js
-module.exports = { server, io, app, setWhatsAppClient, setPaymentWhatsAppClient, setAdminLTEWhatsAppClientRef, setApiGroupsWhatsAppClientRef };
+module.exports = { server, io, app, setWhatsAppClient, setAdminLTEWhatsAppClientRef, setApiGroupsWhatsAppClientRef };

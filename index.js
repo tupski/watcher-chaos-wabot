@@ -3,7 +3,7 @@ const { Client: WhatsAppClient, LocalAuth } = require('whatsapp-web.js');
 const { Client: DiscordClient, GatewayIntentBits } = require('discord.js');
 const qrcode = require('qrcode-terminal');
 const qr = require('qrcode');
-const { server, io, setWhatsAppClient, setPaymentWhatsAppClient, setAdminLTEWhatsAppClientRef, setApiGroupsWhatsAppClientRef } = require('./server');
+const { server, io, setWhatsAppClient, setAdminLTEWhatsAppClientRef, setApiGroupsWhatsAppClientRef } = require('./server');
 const Message = require('./models/message');
 const path = require('path');
 const fs = require('fs');
@@ -18,7 +18,7 @@ if (!fs.existsSync(dataDir)) {
 const hellEventHandler = require('./commands/hell');
 const messageHandler = require('./handlers/messageHandler');
 const { startMonsterResetScheduler } = require('./handlers/monsterResetHandler');
-const { startRentExpiryScheduler } = require('./handlers/rentExpiryHandler');
+
 const { handleGroupJoin } = require('./handlers/groupJoinHandler');
 
 // Set the WhatsApp client for API routes (will be updated when client is ready)
@@ -69,7 +69,7 @@ whatsappClient.on('ready', () => {
 
     // Set the WhatsApp client for API routes
     setWhatsAppClient(whatsappClient);
-    setPaymentWhatsAppClient(whatsappClient);
+
 
     // Set client for dashboard routes
     const dashboardRoutes = require('./routes/dashboard');
@@ -86,13 +86,10 @@ whatsappClient.on('ready', () => {
     if (setApiGroupsWhatsAppClientRef) {
         setApiGroupsWhatsAppClientRef(whatsappClient);
     }
-    console.log('WhatsApp client set for API and payment routes');
+    console.log('WhatsApp client set for API routes');
 
     // Start monster reset scheduler
     startMonsterResetScheduler(whatsappClient);
-
-    // Start rent expiry scheduler
-    startRentExpiryScheduler(whatsappClient);
 
     // Send restart notification to BOT_OWNER
     setTimeout(async () => {

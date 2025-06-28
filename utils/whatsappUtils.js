@@ -53,10 +53,7 @@ async function getConfiguredJoinedGroups(whatsappClient) {
                 ...joinedGroup,
                 settings: settings,
                 botEnabled: settings.botEnabled !== false,
-                rentMode: settings.rentMode || false,
-                hellNotifications: settings.hellNotifications || 'all',
-                rentExpiry: settings.rentExpiry || null,
-                rentOwner: settings.rentOwner || null
+                hellNotifications: settings.hellNotifications || 'all'
             });
         }
         
