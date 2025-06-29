@@ -516,7 +516,7 @@ module.exports = async (whatsappClient, message) => {
                 }
                 msgText += `*Time left*: ${timeLeftFormatted}\n`;
                 msgText += `*Phase 3 points*: ${points}\n\n`;
-                msgText += `Message received at:*\n${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
+                msgText += `Message received at:\n*${discordTimestamp.format('DD/MM/YYYY HH:mm:ss')} (GMT+7)*`;
             }
 
             // Only send to WhatsApp groups if there are any configured
