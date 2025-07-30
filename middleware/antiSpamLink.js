@@ -103,7 +103,7 @@ module.exports = async (message, client) => {
             // If action is 'warn' or delete failed, send warning message
             try {
                 const contact = await message.getContact();
-                const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${contact.number || contact.pushname || 'Unknown'} link yang Anda kirim tidak diizinkan di grup ini.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}\n\n${antiSpamSettings.action === 'delete' ? '⚠️ Pesan akan dihapus jika bot memiliki izin admin.' : '⚠️ Mohon hapus pesan ini secara manual.'}`;
+                const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${contact.number || contact.pushname || 'Unknown'} link yang Anda kirim tidak diizinkan di grup ini.\n\n${antiSpamSettings.action === 'delete' ? '⚠️ Pesan akan dihapus jika bot memiliki izin admin.' : '⚠️ Mohon hapus pesan ini secara manual.'}`;
 
                 await chat.sendMessage(warningMsg, {
                     mentions: [message.from]

@@ -40,7 +40,7 @@ Currently, the following feature is still under development:
 
 ### Anti Spam Link
 * This feature automatically blocks or prevents the spread of harmful, spammy, or unwanted links in WhatsApp groups.
-* Configure allowed links in the `ALLOWED_LINKS` environment variable (comma-separated).
+* Configure blocked links in the `BLOCKED_LINKS` environment variable (comma-separated).
 
 ### Monster Rotation
 * Displays daily monster rotation schedule for Lords Mobile
@@ -131,14 +131,14 @@ Next, install all required dependencies by running:
   DISCORD_TOKEN=your_discord_token
   WHATSAPP_CLIENT_ID=your_whatsapp_client_id
   WHATSAPP_GROUP_IDS=your_whatsapp_group_ids
-  ALLOWED_LINKS=https://example.com
+  BLOCKED_LINKS=barongsay.id
   TIMEZONE_OFFSET=7
   ```
 - Replace the placeholders with your respective tokens and group IDs:
     - `your_discord_token`: Your Discord bot token.
     - `your_whatsapp_client_id`: Your unique WhatsApp client ID.
     - `your_whatsapp_group_ids`: Multiple group IDs can be separated by commas _(e.g., id1,id2,id3)_.
-    - `https://example.com`: Allowed links that the bot will whitelist.
+    - `barongsay.id`: Blocked links that the bot will block and delete.
     - `TIMEZONE_OFFSET=7`: Adjust this value based on your local timezone.
 
 ### 4. Start the Bot:
@@ -197,17 +197,17 @@ After successful startup, you should see:
    - Bot needs to fetch participants which may take a moment
 
 #### Anti Spam Link Not Working
-1. **Check ALLOWED_LINKS configuration**
-   - Ensure `ALLOWED_LINKS` is set in your `.env` file
-   - Use comma-separated values for multiple allowed domains
-   - Example: `ALLOWED_LINKS=https://example.com,https://trusted-site.com`
+1. **Check BLOCKED_LINKS configuration**
+   - Ensure `BLOCKED_LINKS` is set in your `.env` file
+   - Use comma-separated values for multiple blocked domains
+   - Example: `BLOCKED_LINKS=barongsay.id,spam-site.com,malicious-site.com`
 
 2. **Bot Permissions and Configuration**
    - Bot must be admin in WhatsApp group to delete messages
    - If bot can't delete messages, it will send warning instead
    - Supported link formats: `https://`, `http://`, `www.`, and `domain.com`
-   - Configure `ALLOWED_LINKS` with domain names only (no http/https needed)
-   - Example: `ALLOWED_LINKS=example.com,google.com,github.com`
+   - Configure `BLOCKED_LINKS` with domain names only (no http/https needed)
+   - Example: `BLOCKED_LINKS=barongsay.id,spam-site.com,malicious-site.com`
 
 #### Hell Event Filter Configuration
 1. **ONLY_WATCHER_CHAOS Setting**

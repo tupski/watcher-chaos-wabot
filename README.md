@@ -169,7 +169,7 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 
 # Anti-Spam Link Configuration (DEPRECATED - now per-group setting)
-ALLOWED_LINKS=fb.com,facebook.com,google.com,docs.google.com,wa.me,whatsapp.com,youtube.com,tiktok.com,vt.tiktok.com,youtu.be
+BLOCKED_LINKS=barongsay.id,spam-site.com,malicious-site.com
 ```
 
 ### Database Configuration

@@ -121,25 +121,25 @@ const testMessages = [
     'No links here'
 ];
 
-const allowedLinks = ['example.com']; // Simulate ALLOWED_LINKS
+const blockedLinks = ['barongsay.id', 'spam-site.com']; // Simulate BLOCKED_LINKS
 
-console.log('   Allowed domains:', allowedLinks);
+console.log('   Blocked domains:', blockedLinks);
 console.log('   Link detection and filtering:');
 
 testMessages.forEach(msg => {
     const matches = msg.match(linkRegex);
     if (matches) {
-        const normalizedAllowedDomains = allowedLinks.map(allowed =>
-            allowed.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase()
+        const normalizedBlockedDomains = blockedLinks.map(blocked =>
+            blocked.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase()
         );
 
         const unauthorizedLinks = matches.filter(link => {
             const normalizedLink = link.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
             const domain = normalizedLink.split('/')[0];
-            const isAllowed = normalizedAllowedDomains.some(allowed =>
-                domain === allowed || domain.includes(allowed) || allowed.includes(domain)
+            const isBlocked = normalizedBlockedDomains.some(blocked =>
+                domain === blocked || domain.includes(blocked) || blocked.includes(domain)
             );
-            return !isAllowed;
+            return isBlocked;
         });
 
         console.log(`   "${msg}" -> Links: ${matches.join(', ')} | Blocked: ${unauthorizedLinks.length > 0 ? unauthorizedLinks.join(', ') : 'None'}`);

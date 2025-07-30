@@ -263,22 +263,22 @@ Jika sebelumnya menggunakan pengaturan global di `.env`:
 
 ### Old Way (Deprecated)
 ```env
-ALLOWED_LINKS=fb.com,google.com,youtube.com
+BLOCKED_LINKS=barongsay.id,spam-site.com,malicious-site.com
 ```
 
 ### New Way (Per-Group)
 ```bash
 # Set untuk setiap grup
-!antispam add fb.com
-!antispam add google.com
-!antispam add youtube.com
+!antispam add barongsay.id
+!antispam add spam-site.com
+!antispam add malicious-site.com
 ```
 
 ### Migration Steps
 1. **Backup Settings**: Catat pengaturan lama
 2. **Configure Groups**: Set pengaturan per grup
 3. **Test Functionality**: Test di setiap grup
-4. **Remove Old Config**: Hapus ALLOWED_LINKS dari .env
+4. **Remove Old Config**: Hapus BLOCKED_LINKS dari .env
 
 ## 📈 Performance & Scalability
 

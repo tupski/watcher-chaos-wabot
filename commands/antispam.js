@@ -31,21 +31,21 @@ module.exports = async (client, message) => {
             statusMessage += `Auto-block Porno: ${settings.blockPorn ? '✅ Aktif' : '❌ Nonaktif'}\n`;
             statusMessage += `Aksi: ${settings.action === 'delete' ? '🗑️ Hapus Pesan' : '⚠️ Beri Peringatan'}\n\n`;
             
-            statusMessage += `📋 *Domain yang Diizinkan:*\n`;
-            if (settings.allowedDomains.length > 0) {
-                settings.allowedDomains.forEach((domain, index) => {
+            statusMessage += `📋 *Domain yang Diblokir:*\n`;
+            if (settings.blockedDomains.length > 0) {
+                settings.blockedDomains.forEach((domain, index) => {
                     statusMessage += `${index + 1}. ${domain}\n`;
                 });
             } else {
-                statusMessage += 'Tidak ada domain yang diizinkan\n';
+                statusMessage += 'Tidak ada domain yang diblokir\n';
             }
             
             statusMessage += '\n📖 *Cara Penggunaan:*\n';
             statusMessage += '• `!antispam on/off` - Aktifkan/nonaktifkan\n';
             statusMessage += '• `!antispam porn on/off` - Auto-block porno\n';
             statusMessage += '• `!antispam action delete/warn` - Atur aksi\n';
-            statusMessage += '• `!antispam add [domain]` - Tambah domain\n';
-            statusMessage += '• `!antispam remove [domain]` - Hapus domain\n';
+            statusMessage += '• `!antispam add [domain]` - Tambah domain ke blokir\n';
+            statusMessage += '• `!antispam remove [domain]` - Hapus domain dari blokir\n';
             statusMessage += '• `!antispam reset` - Reset ke default';
             
             await message.reply(statusMessage);
@@ -94,38 +94,38 @@ module.exports = async (client, message) => {
             case 'add':
                 const domainToAdd = args[1];
                 if (!domainToAdd) {
-                    await message.reply('❌ Masukkan domain yang ingin ditambahkan.\nContoh: `!antispam add google.com`');
+                    await message.reply('❌ Masukkan domain yang ingin ditambahkan ke daftar blokir.\nContoh: `!antispam add barongsay.id`');
                     return;
                 }
-                
+
                 // Clean domain (remove protocol and www)
                 const cleanDomain = domainToAdd.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
-                
-                if (!settings.allowedDomains.includes(cleanDomain)) {
-                    const newAllowedDomains = [...settings.allowedDomains, cleanDomain];
-                    setAntiSpamLink(groupId, { allowedDomains: newAllowedDomains });
-                    await message.reply(`✅ Domain *${cleanDomain}* telah ditambahkan ke daftar yang diizinkan.`);
+
+                if (!settings.blockedDomains.includes(cleanDomain)) {
+                    const newBlockedDomains = [...settings.blockedDomains, cleanDomain];
+                    setAntiSpamLink(groupId, { blockedDomains: newBlockedDomains });
+                    await message.reply(`✅ Domain *${cleanDomain}* telah ditambahkan ke daftar yang diblokir.`);
                 } else {
-                    await message.reply(`❌ Domain *${cleanDomain}* sudah ada dalam daftar yang diizinkan.`);
+                    await message.reply(`❌ Domain *${cleanDomain}* sudah ada dalam daftar yang diblokir.`);
                 }
                 break;
 
             case 'remove':
                 const domainToRemove = args[1];
                 if (!domainToRemove) {
-                    await message.reply('❌ Masukkan domain yang ingin dihapus.\nContoh: `!antispam remove google.com`');
+                    await message.reply('❌ Masukkan domain yang ingin dihapus dari daftar blokir.\nContoh: `!antispam remove barongsay.id`');
                     return;
                 }
-                
+
                 // Clean domain (remove protocol and www)
                 const cleanDomainToRemove = domainToRemove.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
-                
-                if (settings.allowedDomains.includes(cleanDomainToRemove)) {
-                    const newAllowedDomains = settings.allowedDomains.filter(domain => domain !== cleanDomainToRemove);
-                    setAntiSpamLink(groupId, { allowedDomains: newAllowedDomains });
-                    await message.reply(`✅ Domain *${cleanDomainToRemove}* telah dihapus dari daftar yang diizinkan.`);
+
+                if (settings.blockedDomains.includes(cleanDomainToRemove)) {
+                    const newBlockedDomains = settings.blockedDomains.filter(domain => domain !== cleanDomainToRemove);
+                    setAntiSpamLink(groupId, { blockedDomains: newBlockedDomains });
+                    await message.reply(`✅ Domain *${cleanDomainToRemove}* telah dihapus dari daftar yang diblokir.`);
                 } else {
-                    await message.reply(`❌ Domain *${cleanDomainToRemove}* tidak ada dalam daftar yang diizinkan.`);
+                    await message.reply(`❌ Domain *${cleanDomainToRemove}* tidak ada dalam daftar yang diblokir.`);
                 }
                 break;
 

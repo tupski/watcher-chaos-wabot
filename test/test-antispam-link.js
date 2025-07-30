@@ -16,7 +16,7 @@ const defaultSettings = getAntiSpamLinkSettings(testGroupId);
 console.log(`Enabled: ${defaultSettings.enabled}`);
 console.log(`Block Porn: ${defaultSettings.blockPorn}`);
 console.log(`Action: ${defaultSettings.action}`);
-console.log(`Allowed Domains: ${defaultSettings.allowedDomains.join(', ')}`);
+console.log(`Blocked Domains: ${defaultSettings.blockedDomains.join(', ')}`);
 console.log('✅ Default settings test passed!\n');
 
 console.log('📋 Test 2: Enable/Disable Anti-Spam');
@@ -119,23 +119,23 @@ console.log('==================================================');
 const { defaultSettings: globalDefaults } = require('../utils/groupSettings');
 
 // Modify settings
-setAntiSpamLink(testGroupId, { 
-    enabled: false, 
-    blockPorn: false, 
+setAntiSpamLink(testGroupId, {
+    enabled: false,
+    blockPorn: false,
     action: 'warn',
-    allowedDomains: ['only-example.com']
+    blockedDomains: ['only-blocked-example.com']
 });
 
 console.log('Settings before reset:');
 settings = getAntiSpamLinkSettings(testGroupId);
-console.log(`Enabled: ${settings.enabled}, Block Porn: ${settings.blockPorn}, Action: ${settings.action}, Domains: ${settings.allowedDomains.length}`);
+console.log(`Enabled: ${settings.enabled}, Block Porn: ${settings.blockPorn}, Action: ${settings.action}, Domains: ${settings.blockedDomains.length}`);
 
 // Reset to default
 setAntiSpamLink(testGroupId, globalDefaults.antiSpamLink);
 
 console.log('Settings after reset:');
 settings = getAntiSpamLinkSettings(testGroupId);
-console.log(`Enabled: ${settings.enabled}, Block Porn: ${settings.blockPorn}, Action: ${settings.action}, Domains: ${settings.allowedDomains.length}`);
+console.log(`Enabled: ${settings.enabled}, Block Porn: ${settings.blockPorn}, Action: ${settings.action}, Domains: ${settings.blockedDomains.length}`);
 console.log('✅ Reset to default test passed!\n');
 
 console.log('🎉 All Anti-Spam Link Tests Completed!');

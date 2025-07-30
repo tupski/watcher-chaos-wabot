@@ -12,7 +12,7 @@ const defaultSettings = {
     botEnabled: true, // true = bot aktif, false = bot nonaktif
     antiSpamLink: {
         enabled: true, // true = aktif, false = nonaktif
-        allowedDomains: ['fb.com', 'facebook.com', 'google.com', 'docs.google.com', 'wa.me', 'whatsapp.com', 'youtube.com', 'tiktok.com', 'vt.tiktok.com', 'youtu.be'],
+        blockedDomains: ['barongsay.id', 'spam-site.com', 'malicious-site.com'], // Domain yang diblokir
         blockPorn: true, // true = auto block link porno, false = tidak
         action: 'delete' // 'delete' = hapus pesan, 'warn' = beri peringatan saja
     },
