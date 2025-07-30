@@ -83,10 +83,11 @@ module.exports = async (message, client) => {
                     // Send notification about deleted message
                     try {
                         const contact = await message.getContact();
-                        const notificationMsg = `🚫 *Link Dihapus Otomatis* 🚫\n\n@${contact.number || contact.pushname || 'Unknown'} pesan Anda dihapus karena mengandung link yang tidak diizinkan.`;
+                        const userName = contact.pushname || contact.name || contact.number || 'Unknown';
+                        const notificationMsg = `🚫 *Link Dihapus Otomatis* 🚫\n\n@${userName} pesan Anda dihapus karena mengandung link yang tidak diizinkan.`;
 
                         await chat.sendMessage(notificationMsg, {
-                            mentions: [message.from]
+                            mentions: [contact]
                         });
 
                         console.log('Deletion notification sent');
@@ -103,10 +104,11 @@ module.exports = async (message, client) => {
             // If action is 'warn' or delete failed, send warning message
             try {
                 const contact = await message.getContact();
-                const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${contact.number || contact.pushname || 'Unknown'} link yang Anda kirim tidak diizinkan di grup ini.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}\n\n${antiSpamSettings.action === 'delete' ? '⚠️ Pesan akan dihapus jika bot memiliki izin admin.' : '⚠️ Mohon hapus pesan ini secara manual.'}`;
+                const userName = contact.pushname || contact.name || contact.number || 'Unknown';
+                const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${userName} link yang Anda kirim tidak diizinkan di grup ini.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}\n\n${antiSpamSettings.action === 'delete' ? '⚠️ Pesan akan dihapus jika bot memiliki izin admin.' : '⚠️ Mohon hapus pesan ini secara manual.'}`;
 
                 await chat.sendMessage(warningMsg, {
-                    mentions: [message.from]
+                    mentions: [contact]
                 });
 
                 console.log('Warning message sent for unauthorized link');
