@@ -40,12 +40,12 @@ module.exports = async (message, client) => {
     }
 
     try {
-        // Normalize allowed links to just domain names (remove protocols)
-        const normalizedAllowedDomains = antiSpamSettings.allowedDomains.map(allowed => {
-            return allowed.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+        // Normalize blocked links to just domain names (remove protocols)
+        const normalizedBlockedDomains = antiSpamSettings.blockedDomains.map(blocked => {
+            return blocked.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
         });
 
-        console.log('Normalized allowed domains:', normalizedAllowedDomains);
+        console.log('Normalized blocked domains:', normalizedBlockedDomains);
 
         const unauthorizedLinks = links.filter(link => {
             // Normalize the found link to just domain name
@@ -61,13 +61,13 @@ module.exports = async (message, client) => {
                 return true; // Block this link
             }
 
-            // Check if this domain is in the allowed list
-            const isAllowed = normalizedAllowedDomains.some(allowed =>
-                domain === allowed || domain.includes(allowed) || allowed.includes(domain)
+            // Check if this domain is in the blocked list
+            const isBlocked = normalizedBlockedDomains.some(blocked =>
+                domain === blocked || domain.includes(blocked) || blocked.includes(domain)
             );
 
-            console.log(`Domain "${domain}" is ${isAllowed ? 'ALLOWED' : 'BLOCKED'}`);
-            return !isAllowed;
+            console.log(`Domain "${domain}" is ${isBlocked ? 'BLOCKED' : 'ALLOWED'}`);
+            return isBlocked; // Block if domain is in blocked list
         });
 
         if (unauthorizedLinks.length > 0) {
@@ -83,7 +83,7 @@ module.exports = async (message, client) => {
                     // Send notification about deleted message
                     try {
                         const contact = await message.getContact();
-                        const notificationMsg = `🚫 *Link Dihapus Otomatis* 🚫\n\n@${contact.number || contact.pushname || 'Unknown'} pesan Anda dihapus karena mengandung link yang tidak diizinkan.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}`;
+                        const notificationMsg = `🚫 *Link Dihapus Otomatis* 🚫\n\n@${contact.number || contact.pushname || 'Unknown'} pesan Anda dihapus karena mengandung link yang tidak diizinkan.`;
 
                         await chat.sendMessage(notificationMsg, {
                             mentions: [message.from]
@@ -103,7 +103,7 @@ module.exports = async (message, client) => {
             // If action is 'warn' or delete failed, send warning message
             try {
                 const contact = await message.getContact();
-                const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${contact.number || contact.pushname || 'Unknown'} link yang Anda kirim tidak diizinkan di grup ini.\n\n${antiSpamSettings.action === 'delete' ? '⚠️ Pesan akan dihapus jika bot memiliki izin admin.' : '⚠️ Mohon hapus pesan ini secara manual.'}`;
+                const warningMsg = `⚠️ *Link Tidak Diizinkan* ⚠️\n\n@${contact.number || contact.pushname || 'Unknown'} link yang Anda kirim tidak diizinkan di grup ini.\n\nLink yang diblokir: ${unauthorizedLinks.join(', ')}\n\n${antiSpamSettings.action === 'delete' ? '⚠️ Pesan akan dihapus jika bot memiliki izin admin.' : '⚠️ Mohon hapus pesan ini secara manual.'}`;
 
                 await chat.sendMessage(warningMsg, {
                     mentions: [message.from]
